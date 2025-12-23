@@ -2,91 +2,256 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8">
-  <title>Team Ski Tracker – Csatlakozás</title>
+  <title>Team Ski Tracker</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1f6f8b">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f7fa;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #1f6f8b;
+      color: white;
+      border: none;
+    }
+    #map {
+      height: 60vh;
+      border-radius: 12px;
+      margin-top: 12px;
+    }
+    .status-buttons button {
+      margin-top: 8px;
+    }
+    .active-status {
+      background: #2ecc71 !important;
+      font-weight: bold;
+    }
+    .warning {
+      color: #c0392b;
+      font-weight: bold;
+      margin-top: 12px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>Team Ski Tracker</h1>
-  <p>Csatlakozás és GPS megosztás</p>
 
-  <hr>
+<div id="joinCard" class="card">
+  <h2>Csatlakozás az eseményhez</h2>
+  <input id="displayName" placeholder="Becenév">
+  <button id="joinBtn">Csatlakozom</button>
+  <p id="statusText"></p>
+</div>
 
-  <form id="joinForm">
-    <input type="text" id="groupId" readonly><br><br>
-    <input type="text" id="fullName" placeholder="Teljes név" required><br><br>
-    <input type="text" id="nickName" placeholder="Becenév" required><br><br>
-    <button type="submit">Csatlakozás és GPS indítása</button>
-  </form>
+<div id="mapCard" class="card" style="display:none">
+  <h2>Térkép</h2>
+  <div id="map"></div>
 
-  <p id="status"></p>
+  <h3>Állapotom</h3>
+  <div class="status-buttons">
+    <button data-status="⛷️ Síelek">⛷️ Síelek</button>
+    <button data-status="☕ Pihenek">☕ Pihenek</button>
+    <button data-status="🚑 Segítség kell">🚑 Segítség kell</button>
+    <button data-status="🏠 Szálláson">🏠 Szálláson</button>
+  </div>
 
-  <script type="module">
-    import { db } from "./js/config.js";
-    import {
-      ref,
-      push,
-      set,
-      update,
-      get
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  <p id="eventEndedMsg" class="warning" style="display:none">
+    ⚠️ Az esemény véget ért, a helymegosztás leállt.
+  </p>
+</div>
 
-    const status = document.getElementById("status");
-    const groupId = new URLSearchParams(location.search).get("groupId");
-    document.getElementById("groupId").value = groupId;
+<script type="module">
+  import { db } from "./js/config.js";
+  import {
+    ref,
+    push,
+    set,
+    update,
+    onValue,
+    get
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    let memberId = null;
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get("eventId");
 
-    document.getElementById("joinForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+  const joinCard = document.getElementById("joinCard");
+  const mapCard = document.getElementById("mapCard");
+  const statusText = document.getElementById("statusText");
+  const eventEndedMsg = document.getElementById("eventEndedMsg");
 
-      const fullName = document.getElementById("fullName").value;
-      const nickName = document.getElementById("nickName").value;
+  let memberId = null;
+  let map = null;
+  let markers = {};
+  let watchId = null;
+  let eventEndTime = null;
 
-      const groupSnap = await get(ref(db, `groups/${groupId}`));
-      if (!groupSnap.exists()) {
-        status.textContent = "❌ A csoport nem létezik.";
-        return;
-      }
+  if (!eventId) {
+    statusText.textContent = "❌ Hiányzó eseményazonosító.";
+  }
 
-      const memberRef = push(ref(db, `groups/${groupId}/members`));
-      memberId = memberRef.key;
+  document.getElementById("joinBtn").onclick = async () => {
+    if (!displayName.value) {
+      statusText.textContent = "Add meg a beceneved.";
+      return;
+    }
 
-      await set(memberRef, {
-        fullName,
-        nickName,
-        joinedAt: Date.now()
-      });
+    const eventSnap = await get(ref(db, `events/${eventId}`));
+    if (!eventSnap.exists()) {
+      statusText.textContent = "❌ Az esemény nem létezik.";
+      return;
+    }
 
-      status.textContent = "✅ Csatlakozva, GPS indul…";
-      startGps();
-      document.getElementById("joinForm").style.display = "none";
+    const event = eventSnap.val();
+    if (event.status !== "active") {
+      statusText.textContent = "⚠️ Az esemény nem aktív.";
+      return;
+    }
+
+    eventEndTime = new Date(event.to).getTime();
+
+    const memberRef = push(ref(db, `events/${eventId}/members`));
+    memberId = memberRef.key;
+
+    await set(memberRef, {
+      displayName: displayName.value.trim(),
+      status: "–",
+      joinedAt: Date.now(),
+      lastSeen: Date.now()
     });
 
-    function startGps() {
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude, accuracy } = pos.coords;
+    joinCard.style.display = "none";
+    mapCard.style.display = "block";
 
-          update(ref(db, `groups/${groupId}/members/${memberId}`), {
-            latitude,
-            longitude,
-            accuracy,
-            lastUpdate: Date.now()
-          });
+    initMap();
+    startGps();
+    listenMembers();
+    listenEventStatus();
+    setupStatusButtons();
+  };
 
-          status.textContent =
-            `📍 GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-        },
-        (err) => {
-          status.textContent = "❌ GPS hiba: " + err.message;
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 10000,
-          timeout: 10000
+  function initMap() {
+    map = L.map("map").setView([47.3, 13.3], 13);
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { attribution: "© OpenStreetMap" }
+    ).addTo(map);
+  }
+
+  function startGps() {
+    watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (Date.now() > eventEndTime) {
+          stopGps();
+          return;
         }
-      );
+
+        update(ref(db, `events/${eventId}/members/${memberId}`), {
+          location: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            timestamp: Date.now()
+          },
+          lastSeen: Date.now()
+        });
+      },
+      err => {
+        statusText.textContent = "GPS hiba: " + err.message;
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 15000,
+        timeout: 10000
+      }
+    );
+  }
+
+  function stopGps() {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      eventEndedMsg.style.display = "block";
     }
-  </script>
+  }
+
+  function listenEventStatus() {
+    onValue(ref(db, `events/${eventId}/status`), snap => {
+      if (snap.val() !== "active") {
+        stopGps();
+      }
+    });
+  }
+
+  function listenMembers() {
+    onValue(ref(db, `events/${eventId}/members`), snap => {
+      const members = snap.val() || {};
+
+      Object.entries(members).forEach(([id, m]) => {
+        if (!m.location) return;
+
+        if (!markers[id]) {
+          markers[id] = L.marker([
+            m.location.lat,
+            m.location.lng
+          ])
+            .addTo(map)
+            .bindPopup(`${m.displayName}<br>${m.status ?? ""}`);
+        } else {
+          markers[id]
+            .setLatLng([m.location.lat, m.location.lng])
+            .setPopupContent(`${m.displayName}<br>${m.status ?? ""}`);
+        }
+      });
+    });
+  }
+
+  function setupStatusButtons() {
+    document.querySelectorAll(".status-buttons button").forEach(btn => {
+      btn.onclick = () => {
+        update(ref(db, `events/${eventId}/members/${memberId}`), {
+          status: btn.dataset.status
+        });
+
+        document
+          .querySelectorAll(".status-buttons button")
+          .forEach(b => b.classList.remove("active-status"));
+
+        btn.classList.add("active-status");
+      };
+    });
+  }
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+  }
+</script>
+
 </body>
 </html>
