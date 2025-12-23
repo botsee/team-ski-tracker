@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Ski Tracker – Csatlakozás</title>
+</head>
+
+<body>
+  <h1>Team Ski Tracker</h1>
+  <p>Csatlakozás és GPS megosztás</p>
+
+  <hr>
+
+  <form id="joinForm">
+    <input type="text" id="groupId" readonly><br><br>
+    <input type="text" id="fullName" placeholder="Teljes név" required><br><br>
+    <input type="text" id="nickName" placeholder="Becenév" required><br><br>
+    <button type="submit">Csatlakozás és GPS indítása</button>
+  </form>
+
+  <p id="status"></p>
+
+  <script type="module">
+    import { db } from "./js/config.js";
+    import {
+      ref,
+      push,
+      set,
+      update,
+      get
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const status = document.getElementById("status");
+    const groupId = new URLSearchParams(location.search).get("groupId");
+    document.getElementById("groupId").value = groupId;
+
+    let memberId = null;
+
+    document.getElementById("joinForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fullName = document.getElementById("fullName").value;
+      const nickName = document.getElementById("nickName").value;
+
+      const groupSnap = await get(ref(db, `groups/${groupId}`));
+      if (!groupSnap.exists()) {
+        status.textContent = "❌ A csoport nem létezik.";
+        return;
+      }
+
+      const memberRef = push(ref(db, `groups/${groupId}/members`));
+      memberId = memberRef.key;
+
+      await set(memberRef, {
+        fullName,
+        nickName,
+        joinedAt: Date.now()
+      });
+
+      status.textContent = "✅ Csatlakozva, GPS indul…";
+      startGps();
+      document.getElementById("joinForm").style.display = "none";
+    });
+
+    function startGps() {
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+
+          update(ref(db, `groups/${groupId}/members/${memberId}`), {
+            latitude,
+            longitude,
+            accuracy,
+            lastUpdate: Date.now()
+          });
+
+          status.textContent =
+            `📍 GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        },
+        (err) => {
+          status.textContent = "❌ GPS hiba: " + err.message;
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000,
+          timeout: 10000
+        }
+      );
+    }
+  </script>
+</body>
+</html>

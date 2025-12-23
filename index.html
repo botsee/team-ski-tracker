@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Ski Tracker – Admin</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+
+  <!-- QR -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+  <style>
+    body { font-family: sans-serif; }
+    #map { height: 400px; margin-top: 10px; }
+    li { cursor: pointer; }
+  </style>
+</head>
+
+<body>
+
+<h1>Team Ski Tracker – Admin</h1>
+
+<hr>
+
+<h2>Új csoport létrehozása</h2>
+<input id="groupName" placeholder="Csoport neve"><br>
+<input id="location" placeholder="Helyszín"><br>
+<input id="date" type="date"><br>
+<input id="gpsInterval" type="number" value="300"><br>
+<button id="createGroup">Csoport létrehozása</button>
+
+<hr>
+
+<h2>Létrehozott csoportok</h2>
+<ul id="groupList"></ul>
+
+<hr>
+
+<h2>Aktív csoport</h2>
+<p id="activeGroup">–</p>
+
+<p>
+  <strong>Csatlakozási link:</strong><br>
+  <a id="joinLink" target="_blank"></a>
+</p>
+
+<div id="qr"></div>
+
+<hr>
+
+<h2>Élő térkép</h2>
+<div id="map"></div>
+
+<hr>
+
+<h2>Tagok (GPS)</h2>
+<ul id="memberList"></ul>
+
+<script type="module">
+  import { db } from "./js/config.js";
+  import {
+    ref,
+    push,
+    set,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const groupList = document.getElementById("groupList");
+  const memberList = document.getElementById("memberList");
+  const joinLink = document.getElementById("joinLink");
+  const qrDiv = document.getElementById("qr");
+  const activeGroupText = document.getElementById("activeGroup");
+
+  /* ===== TÉRKÉP ===== */
+  const map = L.map("map").setView([47.4979, 19.0402], 13); // Budapest default
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap"
+  }).addTo(map);
+
+  const markers = {};
+
+  /* ===== CSOPORT LÉTREHOZÁS ===== */
+  createGroup.onclick = async () => {
+    const refNew = push(ref(db, "groups"));
+    await set(refNew, {
+      name: groupName.value,
+      location: location.value,
+      date: date.value,
+      gpsInterval: Number(gpsInterval.value),
+      createdAt: Date.now()
+    });
+    alert("Csoport létrehozva");
+  };
+
+  /* ===== CSOPORTLISTA ===== */
+  onValue(ref(db, "groups"), snap => {
+    groupList.innerHTML = "";
+    const groups = snap.val() || {};
+    Object.entries(groups).forEach(([id, g]) => {
+      const li = document.createElement("li");
+      li.textContent = g.name;
+      li.onclick = () => selectGroup(id, g.name);
+      groupList.appendChild(li);
+    });
+  });
+
+  /* ===== CSOPORT KIVÁLASZTÁS ===== */
+  function selectGroup(groupId, name) {
+    activeGroupText.textContent = name;
+
+    const url = `${location.origin}/join.html?groupId=${groupId}`;
+    joinLink.href = url;
+    joinLink.textContent = url;
+
+    qrDiv.innerHTML = "";
+    new QRCode(qrDiv, url);
+
+    listenMembers(groupId);
+  }
+
+  /* ===== TAGOK + MARKEREK ===== */
+  function listenMembers(groupId) {
+    onValue(ref(db, `groups/${groupId}/members`), snap => {
+      memberList.innerHTML = "";
+      const members = snap.val() || {};
+
+      Object.entries(members).forEach(([id, m]) => {
+        const li = document.createElement("li");
+        li.textContent =
+          `${m.nickName} | ${m.latitude ?? "–"}, ${m.longitude ?? "–"}`;
+        memberList.appendChild(li);
+
+        if (m.latitude && m.longitude) {
+          const latlng = [m.latitude, m.longitude];
+
+          if (!markers[id]) {
+            markers[id] = L.marker(latlng)
+              .addTo(map)
+              .bindPopup(m.nickName);
+          } else {
+            markers[id].setLatLng(latlng);
+          }
+
+          map.setView(latlng, 15);
+        }
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
