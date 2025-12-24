@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>Team Ski Tracker – Admin</title>
 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1f6f8b">
@@ -80,6 +82,7 @@
   </select>
 
   <button id="createEventBtn">Esemény létrehozása</button>
+  <p id="createStatus"></p>
 </div>
 
 <div class="card">
@@ -102,13 +105,24 @@
 
 <script type="module">
   import { db } from "./js/config.js";
-  import { ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, push, set, onValue } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   let selectedEventId = null;
-  let map;
+  let map = null;
   let markers = {};
 
-  createEventBtn.onclick = async () => {
+  const eventList = document.getElementById("eventList");
+  const joinLink = document.getElementById("joinLink");
+  const qrDiv = document.getElementById("qr");
+
+  // 🔴 EZ A KRITIKUS RÉSZ – HELYES BASE PATH
+  function getBasePath() {
+    return window.location.origin +
+           window.location.pathname.replace(/index\.html$/, "");
+  }
+
+  document.getElementById("createEventBtn").onclick = async () => {
     const newEventRef = push(ref(db, "events"));
     await set(newEventRef, {
       name: eventName.value,
@@ -122,44 +136,27 @@
 
   onValue(ref(db, "events"), snap => {
     eventList.innerHTML = "";
-    Object.entries(snap.val() || {}).forEach(([id, e]) => {
+    const events = snap.val() || {};
+
+    Object.entries(events).forEach(([id, e]) => {
       const li = document.createElement("li");
-      li.textContent = e.name;
+      li.textContent = `${e.name} (${e.status})`;
       li.onclick = () => selectEvent(id);
       eventList.appendChild(li);
     });
   });
 
-  function selectEvent(id) {
-    selectedEventId = id;
-    const url = `${location.origin}/join.html?eventId=${id}`;
-    joinLink.href = url;
-    joinLink.textContent = url;
-    qr.innerHTML = "";
-    new QRCode(qr, url);
-    initMap();
-    listenMembers();
-  }
+  function selectEvent(eventId) {
+    selectedEventId = eventId;
 
-  function initMap() {
-    if (map) return;
-    map = L.map("map").setView([47.3, 13.3], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-  }
+    const joinUrl =
+      `${getBasePath()}join.html?eventId=${eventId}`;
 
-  function listenMembers() {
-    onValue(ref(db, `events/${selectedEventId}/members`), snap => {
-      Object.entries(snap.val() || {}).forEach(([id, m]) => {
-        if (!m.location) return;
-        if (!markers[id]) {
-          markers[id] = L.marker([m.location.lat, m.location.lng])
-            .addTo(map)
-            .bindPopup(m.displayName);
-        } else {
-          markers[id].setLatLng([m.location.lat, m.location.lng]);
-        }
-      });
-    });
+    joinLink.href = joinUrl;
+    joinLink.textContent = joinUrl;
+
+    qrDiv.innerHTML = "";
+    new QRCode(qrDiv, joinUrl);
   }
 </script>
 
