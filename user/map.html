@@ -2,136 +2,144 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Csapat térkép</title>
+  <title>Team Ski Tracker – Térkép</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: #f4f6f8;
-    }
-
-    header {
-      background: #2f5d73;
-      color: white;
-      padding: 14px 16px;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    #controls {
-      padding: 12px;
-      background: white;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    select, input {
-      padding: 8px;
-      font-size: 14px;
     }
 
     #map {
-      height: calc(100vh - 120px);
+      height: 100vh;
+      width: 100%;
+    }
+
+    .status {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 1000;
     }
   </style>
 </head>
+
 <body>
 
-<header>Csapat térkép</header>
-
-<div id="controls">
-  <input id="nameInput" placeholder="Neved" />
-  <select id="statusSelect">
-    <option value="skiing">⛷️ Síel</option>
-    <option value="lift">🚠 Felvonó</option>
-    <option value="rest">☕ Pihen</option>
-    <option value="offline">🔴 Offline</option>
-  </select>
-</div>
-
 <div id="map"></div>
+<div class="status" id="status">Pozíció meghatározása…</div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { db } from "../js/config.js";
   import {
-    getDatabase,
     ref,
+    onValue,
     set,
-    onValue
+    update
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "XXX",
-    authDomain: "XXX",
-    databaseURL: "XXX",
-    projectId: "XXX",
-    appId: "XXX"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
+  // -------- URL PARAM --------
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
 
   if (!eventId) {
-    alert("Hiányzó eventId");
+    alert("Hiányzó eseményazonosító");
     throw new Error("Missing eventId");
   }
 
-  const userId = localStorage.getItem("userId") || crypto.randomUUID();
-  localStorage.setItem("userId", userId);
+  const userId = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userName") || "Ismeretlen";
 
-  const map = L.map("map").setView([47.0, 13.0], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+  if (!userId) {
+    alert("Nincs user azonosító");
+    throw new Error("Missing userId");
+  }
 
+  const statusEl = document.getElementById("status");
+
+  // -------- TÉRKÉP --------
+  const map = L.map("map").setView([47.4979, 19.0402], 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: "© OpenStreetMap"
+  }).addTo(map);
+
+  // -------- MARKEREK --------
   const markers = {};
 
-  function updateMapBounds() {
-    const group = Object.values(markers);
-    if (group.length > 0) {
-      const featureGroup = L.featureGroup(group);
-      map.fitBounds(featureGroup.getBounds().pad(0.2));
+  function updateMarker(id, lat, lng, name) {
+    if (markers[id]) {
+      markers[id].setLatLng([lat, lng]);
+    } else {
+      markers[id] = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(name);
     }
   }
 
-  navigator.geolocation.watchPosition(pos => {
-    const data = {
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      status: document.getElementById("statusSelect").value,
-      name: document.getElementById("nameInput").value || "Anonim",
-      lastUpdate: Date.now()
-    };
+  // -------- TAGOK FIGYELÉSE --------
+  const membersRef = ref(db, `members/${eventId}`);
 
-    set(ref(db, `members/${eventId}/${userId}`), data);
-  });
-
-  onValue(ref(db, `members/${eventId}`), snap => {
+  onValue(membersRef, snap => {
     const members = snap.val() || {};
+    const bounds = [];
 
     Object.entries(members).forEach(([id, m]) => {
-      if (!markers[id]) {
-        markers[id] = L.marker([m.lat, m.lng]).addTo(map);
-      } else {
-        markers[id].setLatLng([m.lat, m.lng]);
-      }
-
-      markers[id].bindPopup(
-        `<b>${m.name}</b><br>${m.status}`
-      );
+      if (!m.lat || !m.lng) return;
+      updateMarker(id, m.lat, m.lng, m.name);
+      bounds.push([m.lat, m.lng]);
     });
 
-    updateMapBounds();
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
   });
+
+  // -------- GPS --------
+  function sendPosition(pos) {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    update(ref(db, `members/${eventId}/${userId}`), {
+      name: userName,
+      lat,
+      lng,
+      status: "online",
+      lastUpdate: Date.now()
+    });
+
+    updateMarker(userId, lat, lng, userName);
+    statusEl.textContent = "Pozíció frissítve";
+  }
+
+  function gpsError() {
+    statusEl.textContent = "GPS nem elérhető";
+  }
+
+  navigator.geolocation.watchPosition(
+    sendPosition,
+    gpsError,
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    }
+  );
 </script>
 
 </body>
