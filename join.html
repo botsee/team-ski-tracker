@@ -2,15 +2,18 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8">
-  <title>Team Ski Tracker</title>
+  <title>Team Ski Tracker – Csatlakozás</title>
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/team-ski-tracker/manifest.json">
   <meta name="theme-color" content="#1f6f8b">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Leaflet -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
@@ -38,22 +41,11 @@
       background: #1f6f8b;
       color: white;
       border: none;
+      cursor: pointer;
     }
     #map {
       height: 60vh;
       border-radius: 12px;
-      margin-top: 12px;
-    }
-    .status-buttons button {
-      margin-top: 8px;
-    }
-    .active-status {
-      background: #2ecc71 !important;
-      font-weight: bold;
-    }
-    .warning {
-      color: #c0392b;
-      font-weight: bold;
       margin-top: 12px;
     }
   </style>
@@ -71,18 +63,6 @@
 <div id="mapCard" class="card" style="display:none">
   <h2>Térkép</h2>
   <div id="map"></div>
-
-  <h3>Állapotom</h3>
-  <div class="status-buttons">
-    <button data-status="⛷️ Síelek">⛷️ Síelek</button>
-    <button data-status="☕ Pihenek">☕ Pihenek</button>
-    <button data-status="🚑 Segítség kell">🚑 Segítség kell</button>
-    <button data-status="🏠 Szálláson">🏠 Szálláson</button>
-  </div>
-
-  <p id="eventEndedMsg" class="warning" style="display:none">
-    ⚠️ Az esemény véget ért, a helymegosztás leállt.
-  </p>
 </div>
 
 <script type="module">
@@ -96,52 +76,45 @@
     get
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(window.location.search);
   const eventId = params.get("eventId");
 
   const joinCard = document.getElementById("joinCard");
   const mapCard = document.getElementById("mapCard");
   const statusText = document.getElementById("statusText");
-  const eventEndedMsg = document.getElementById("eventEndedMsg");
 
   let memberId = null;
   let map = null;
   let markers = {};
-  let watchId = null;
-  let eventEndTime = null;
 
   if (!eventId) {
-    statusText.textContent = "❌ Hiányzó eseményazonosító.";
+    statusText.textContent = "Hiányzó eseményazonosító.";
   }
 
   document.getElementById("joinBtn").onclick = async () => {
-    if (!displayName.value) {
-      statusText.textContent = "Add meg a beceneved.";
+    if (!displayName.value.trim()) {
+      statusText.textContent = "Adj meg egy becenevet.";
       return;
     }
 
     const eventSnap = await get(ref(db, `events/${eventId}`));
     if (!eventSnap.exists()) {
-      statusText.textContent = "❌ Az esemény nem létezik.";
+      statusText.textContent = "Az esemény nem létezik.";
       return;
     }
 
     const event = eventSnap.val();
     if (event.status !== "active") {
-      statusText.textContent = "⚠️ Az esemény nem aktív.";
+      statusText.textContent = "Az esemény nem aktív.";
       return;
     }
-
-    eventEndTime = new Date(event.to).getTime();
 
     const memberRef = push(ref(db, `events/${eventId}/members`));
     memberId = memberRef.key;
 
     await set(memberRef, {
       displayName: displayName.value.trim(),
-      status: "–",
-      joinedAt: Date.now(),
-      lastSeen: Date.now()
+      joinedAt: Date.now()
     });
 
     joinCard.style.display = "none";
@@ -150,34 +123,23 @@
     initMap();
     startGps();
     listenMembers();
-    listenEventStatus();
-    setupStatusButtons();
   };
 
   function initMap() {
     map = L.map("map").setView([47.3, 13.3], 13);
-    L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      { attribution: "© OpenStreetMap" }
-    ).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+      .addTo(map);
   }
 
   function startGps() {
-    watchId = navigator.geolocation.watchPosition(
+    navigator.geolocation.watchPosition(
       pos => {
-        if (Date.now() > eventEndTime) {
-          stopGps();
-          return;
-        }
-
         update(ref(db, `events/${eventId}/members/${memberId}`), {
           location: {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
             timestamp: Date.now()
-          },
-          lastSeen: Date.now()
+          }
         });
       },
       err => {
@@ -189,22 +151,6 @@
         timeout: 10000
       }
     );
-  }
-
-  function stopGps() {
-    if (watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
-      watchId = null;
-      eventEndedMsg.style.display = "block";
-    }
-  }
-
-  function listenEventStatus() {
-    onValue(ref(db, `events/${eventId}/status`), snap => {
-      if (snap.val() !== "active") {
-        stopGps();
-      }
-    });
   }
 
   function listenMembers() {
@@ -220,36 +166,21 @@
             m.location.lng
           ])
             .addTo(map)
-            .bindPopup(`${m.displayName}<br>${m.status ?? ""}`);
+            .bindPopup(m.displayName);
         } else {
-          markers[id]
-            .setLatLng([m.location.lat, m.location.lng])
-            .setPopupContent(`${m.displayName}<br>${m.status ?? ""}`);
+          markers[id].setLatLng([
+            m.location.lat,
+            m.location.lng
+          ]);
         }
       });
-    });
-  }
-
-  function setupStatusButtons() {
-    document.querySelectorAll(".status-buttons button").forEach(btn => {
-      btn.onclick = () => {
-        update(ref(db, `events/${eventId}/members/${memberId}`), {
-          status: btn.dataset.status
-        });
-
-        document
-          .querySelectorAll(".status-buttons button")
-          .forEach(b => b.classList.remove("active-status"));
-
-        btn.classList.add("active-status");
-      };
     });
   }
 </script>
 
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
+    navigator.serviceWorker.register("/team-ski-tracker/service-worker.js");
   }
 </script>
 

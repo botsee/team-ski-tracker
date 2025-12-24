@@ -2,18 +2,19 @@
   "name": "Team Ski Tracker",
   "short_name": "SkiTracker",
   "description": "Csoportos síelés élő helymegosztással",
-  "start_url": "/index.html",
+  "start_url": "/team-ski-tracker/index.html",
+  "scope": "/team-ski-tracker/",
   "display": "standalone",
   "background_color": "#1f6f8b",
   "theme_color": "#1f6f8b",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/team-ski-tracker/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "/team-ski-tracker/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
