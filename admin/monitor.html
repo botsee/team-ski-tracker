@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin monitor – Team Ski Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      height: 100vh;
+    }
+
+    #map {
+      flex: 2;
+    }
+
+    #sidebar {
+      flex: 1;
+      background: white;
+      border-left: 1px solid #ddd;
+      overflow-y: auto;
+    }
+
+    .member {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .member h4 {
+      margin: 0 0 4px;
+    }
+
+    .online {
+      color: #2ecc71;
+      font-weight: 600;
+    }
+
+    .offline {
+      color: #e74c3c;
+    }
+
+    .last {
+      font-size: 13px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div id="sidebar"></div>
+
+<script type="module">
+  import { db } from "../js/config.js";
+  import {
+    ref,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get("eventId");
+
+  if (!eventId) {
+    alert("Hiányzó eseményazonosító");
+    throw new Error("Missing eventId");
+  }
+
+  // ---- MAP ----
+  const map = L.map("map").setView([47.4979, 19.0402], 12);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18
+  }).addTo(map);
+
+  const markers = {};
+  const sidebar = document.getElementById("sidebar");
+
+  function formatTime(ts) {
+    if (!ts) return "—";
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return "épp most";
+    if (diff < 300) return "pár perce";
+    if (diff < 3600) return `${Math.floor(diff / 60)} perce`;
+    return `${Math.floor(diff / 3600)} órája`;
+  }
+
+  // ---- MEMBERS ----
+  onValue(ref(db, `members/${eventId}`), snap => {
+    const members = snap.val() || {};
+    sidebar.innerHTML = "";
+    const bounds = [];
+
+    Object.entries(members).forEach(([id, m]) => {
+      // marker
+      if (m.lat && m.lng) {
+        if (!markers[id]) {
+          markers[id] = L.marker([m.lat, m.lng]).addTo(map);
+        } else {
+          markers[id].setLatLng([m.lat, m.lng]);
+        }
+        markers[id].bindPopup(m.name);
+        bounds.push([m.lat, m.lng]);
+      }
+
+      // sidebar
+      const div = document.createElement("div");
+      div.className = "member";
+      div.innerHTML = `
+        <h4>${m.name}</h4>
+        <div class="${m.status === "online" ? "online" : "offline"}">
+          ${m.status}
+        </div>
+        <div class="last">Frissítés: ${formatTime(m.lastUpdate)}</div>
+      `;
+      sidebar.appendChild(div);
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  });
+</script>
+
+</body>
+</html>
