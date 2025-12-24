@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <title>Csatlakozás – Team Ski Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 360px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .meta {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 18px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #1f6f8b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+    }
+
+    .error {
+      color: #c0392b;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1 id="eventName">Csatlakozás…</h1>
+  <div class="meta" id="eventMeta"></div>
+
+  <label>
+    Neved
+    <input id="nameInput" placeholder="Pl. Balázs" />
+  </label>
+
+  <button id="joinBtn">Csatlakozás</button>
+
+  <div class="error" id="error"></div>
+</div>
+
+<script type="module">
+  import { db } from "../js/config.js";
+  import {
+    ref,
+    get,
+    set
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get("eventId");
+
+  const eventNameEl = document.getElementById("eventName");
+  const eventMetaEl = document.getElementById("eventMeta");
+  const joinBtn = document.getElementById("joinBtn");
+  const errorEl = document.getElementById("error");
+  const nameInput = document.getElementById("nameInput");
+
+  if (!eventId) {
+    errorEl.textContent = "Hiányzó eseményazonosító";
+    joinBtn.disabled = true;
+    throw new Error("Missing eventId");
+  }
+
+  const eventRef = ref(db, `events/${eventId}`);
+  const snap = await get(eventRef);
+
+  if (!snap.exists()) {
+    errorEl.textContent = "Az esemény nem létezik";
+    joinBtn.disabled = true;
+    throw new Error("Event not found");
+  }
+
+  const event = snap.val();
+  eventNameEl.textContent = event.name;
+  eventMetaEl.textContent =
+    `${event.resortName} · ${event.startAt} – ${event.endAt}`;
+
+  if (event.status !== "active") {
+    errorEl.textContent = "Ez az esemény már nem aktív";
+    joinBtn.disabled = true;
+  }
+
+  joinBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      errorEl.textContent = "Add meg a neved";
+      return;
+    }
+
+    joinBtn.disabled = true;
+
+    const userId =
+      localStorage.getItem("userId") || crypto.randomUUID();
+
+    localStorage.setItem("userId", userId);
+    localStorage.setItem("userName", name);
+
+    await set(ref(db, `members/${eventId}/${userId}`), {
+      name,
+      status: "offline",
+      lastUpdate: Date.now()
+    });
+
+    location.href = `./map.html?eventId=${eventId}`;
+  };
+</script>
+
+</body>
+</html>
