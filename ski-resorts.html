@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Ski Tracker – Sípályák</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f7fa;
+    }
+
+    header {
+      background: #1f6f8b;
+      color: white;
+      padding: 16px;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header a {
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background: #1f6f8b;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .resort-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .resort-name {
+      font-weight: 600;
+    }
+
+    .resort-meta {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .status-ok {
+      color: green;
+      font-size: 13px;
+    }
+
+    .status-missing {
+      color: #c0392b;
+      font-size: 13px;
+    }
+
+    .actions a {
+      text-decoration: none;
+      font-size: 14px;
+      color: #1f6f8b;
+      border: 1px solid #1f6f8b;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div>Sípályák kezelése</div>
+  <a href="index.html">← Események</a>
+</header>
+
+<main>
+
+<!-- ÚJ SÍPÁLYA -->
+<div class="card">
+  <h2>Új sípálya létrehozása</h2>
+  <input id="nameInput" placeholder="Sípálya neve (pl. St. Anton)" />
+  <input id="countryInput" placeholder="Ország (pl. AT)" />
+  <button id="createBtn">Sípálya hozzáadása</button>
+</div>
+
+<!-- LISTA -->
+<div class="card">
+  <h2>Rögzített sípályák</h2>
+  <ul id="resortList"></ul>
+</div>
+
+</main>
+
+<script type="module">
+  import { db } from "./js/config.js";
+  import {
+    ref,
+    push,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const nameInput = document.getElementById("nameInput");
+  const countryInput = document.getElementById("countryInput");
+  const createBtn = document.getElementById("createBtn");
+  const resortList = document.getElementById("resortList");
+
+  // 📋 SÍPÁLYÁK LISTÁZÁSA
+  onValue(ref(db, "skiResorts"), snap => {
+    resortList.innerHTML = "";
+    const resorts = snap.val() || {};
+
+    Object.entries(resorts).forEach(([id, resort]) => {
+      const li = document.createElement("li");
+
+      const info = document.createElement("div");
+      info.className = "resort-info";
+
+      const name = document.createElement("div");
+      name.className = "resort-name";
+      name.textContent = `${resort.name} (${resort.country})`;
+
+      const meta = document.createElement("div");
+      meta.className = "resort-meta";
+
+      if (resort.map && resort.map.corners) {
+        meta.innerHTML = `<span class="status-ok">✔ térkép beállítva</span>`;
+      } else {
+        meta.innerHTML = `<span class="status-missing">⚠ nincs térkép</span>`;
+      }
+
+      info.appendChild(name);
+      info.appendChild(meta);
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const editLink = document.createElement("a");
+      editLink.href = `ski-resort-edit.html?resortId=${id}`;
+      editLink.textContent = "Szerkesztés";
+
+      actions.appendChild(editLink);
+
+      li.appendChild(info);
+      li.appendChild(actions);
+
+      resortList.appendChild(li);
+    });
+  });
+
+  // ➕ ÚJ SÍPÁLYA
+  createBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+    const country = countryInput.value.trim();
+
+    if (!name || !country) {
+      alert("Add meg a sípálya nevét és az országot.");
+      return;
+    }
+
+    await push(ref(db, "skiResorts"), {
+      name,
+      country,
+      createdAt: Date.now()
+    });
+
+    nameInput.value = "";
+    countryInput.value = "";
+  };
+</script>
+
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Sípálya térkép beállítása</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Distortable Image -->
+  <link
+    rel="stylesheet"
+    href="lib/leaflet-distortableimage/leaflet.distortableimage.css">
+  <script
+    src="lib/leaflet-distortableimage/leaflet.distortableimage.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f7fa;
+    }
+
+    header {
+      background: #1f6f8b;
+      color: white;
+      padding: 16px;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header a {
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background: #1f6f8b;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #map {
+      height: 520px;
+      border-radius: 12px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #555;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div>Sítérkép és hely beállítása</div>
+  <a href="ski-resorts.html">← Sípályák</a>
+</header>
+
+<main>
+
+<div class="card">
+  <div class="title" id="resortTitle">Sípálya</div>
+  <div class="hint">
+    1️⃣ Navigálj a síterep környékére a térképen<br>
+    2️⃣ Töltsd fel a sítérképet (PNG/JPG)<br>
+    3️⃣ Húzd, forgasd, méretezd pontosan<br>
+    4️⃣ Mentsd el
+  </div>
+</div>
+
+<div class="card">
+  <input type="file" id="imageInput" accept="image/*">
+  <button id="saveBtn">Sítérkép mentése</button>
+</div>
+
+<div class="card">
+  <div id="map"></div>
+</div>
+
+</main>
+
+<script type="module">
+  import { db } from "./js/config.js";
+  import {
+    ref,
+    get,
+    update
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const params = new URLSearchParams(location.search);
+  const resortId = params.get("resortId");
+
+  if (!resortId) {
+    alert("Hiányzó resortId");
+    location.href = "ski-resorts.html";
+  }
+
+  const resortTitle = document.getElementById("resortTitle");
+  const imageInput = document.getElementById("imageInput");
+  const saveBtn = document.getElementById("saveBtn");
+
+  let map = L.map("map").setView([47.3, 13.3], 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    .addTo(map);
+
+  let overlay = null;
+
+  // 🔹 SÍPÁLYA BETÖLTÉSE
+  const snap = await get(ref(db, `skiResorts/${resortId}`));
+  if (!snap.exists()) {
+    alert("Sípálya nem található");
+    location.href = "ski-resorts.html";
+  }
+
+  const resort = snap.val();
+  resortTitle.textContent = `Sípálya: ${resort.name} (${resort.country})`;
+
+  // 🔹 Ha már van térkép, betöltjük
+  if (resort.map && resort.map.imageUrl && resort.map.corners) {
+    overlay = L.distortableImageOverlay(resort.map.imageUrl, {
+      corners: [
+        resort.map.corners.topLeft,
+        resort.map.corners.topRight,
+        resort.map.corners.bottomRight,
+        resort.map.corners.bottomLeft
+      ],
+      actions: [
+        L.DistortableImage.Edit,
+        L.DistortableImage.Rotate,
+        L.DistortableImage.Scale
+      ]
+    }).addTo(map);
+
+    // rázoomolunk
+    map.fitBounds(overlay.getBounds(), { padding: [40, 40] });
+  }
+
+  // 🔹 KÉP FELTÖLTÉS
+  imageInput.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (overlay) map.removeLayer(overlay);
+
+      overlay = L.distortableImageOverlay(reader.result, {
+        actions: [
+          L.DistortableImage.Edit,
+          L.DistortableImage.Rotate,
+          L.DistortableImage.Scale
+        ]
+      }).addTo(map);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 💾 MENTÉS
+  saveBtn.onclick = async () => {
+    if (!overlay) {
+      alert("Nincs feltöltött térkép");
+      return;
+    }
+
+    const corners = overlay.getCorners();
+
+    await update(ref(db, `skiResorts/${resortId}/map`), {
+      imageUrl: overlay._url,
+      corners: {
+        topLeft: corners[0],
+        topRight: corners[1],
+        bottomRight: corners[2],
+        bottomLeft: corners[3]
+      }
+    });
+
+    alert("Sítérkép elmentve");
+  };
+</script>
+
+</body>
+</html>

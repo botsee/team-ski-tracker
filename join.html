@@ -1,187 +1,167 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-  <meta charset="UTF-8">
-  <title>Team Ski Tracker – Csatlakozás</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="/team-ski-tracker/manifest.json">
-  <meta name="theme-color" content="#1f6f8b">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8" />
+  <title>Csatlakozás – Team Ski Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: #f4f7fa;
+      background: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
+
     .card {
       background: white;
+      padding: 20px;
       border-radius: 12px;
-      padding: 16px;
-      margin: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      width: 90%;
+      max-width: 360px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    input, button {
+
+    h1 {
+      font-size: 20px;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .meta {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 18px;
       width: 100%;
       padding: 12px;
-      margin-top: 10px;
       font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    button {
       background: #1f6f8b;
       color: white;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
     }
-    #map {
-      height: 60vh;
-      border-radius: 12px;
-      margin-top: 12px;
+
+    button:disabled {
+      background: #aaa;
+    }
+
+    .error {
+      color: #c0392b;
+      font-size: 14px;
+      margin-top: 10px;
     }
   </style>
 </head>
 
 <body>
 
-<div id="joinCard" class="card">
-  <h2>Csatlakozás az eseményhez</h2>
-  <input id="displayName" placeholder="Becenév">
-  <button id="joinBtn">Csatlakozom</button>
-  <p id="statusText"></p>
-</div>
+<div class="card">
+  <h1 id="eventName">Csatlakozás…</h1>
+  <div class="meta" id="eventMeta"></div>
 
-<div id="mapCard" class="card" style="display:none">
-  <h2>Térkép</h2>
-  <div id="map"></div>
+  <label>
+    Neved
+    <input id="nameInput" placeholder="Pl. Balázs" />
+  </label>
+
+  <button id="joinBtn">Csatlakozás</button>
+
+  <div class="error" id="error"></div>
 </div>
 
 <script type="module">
-  import { db } from "./js/config.js";
+  import { db } from "../js/config.js";
   import {
     ref,
-    push,
-    set,
-    update,
-    onValue,
-    get
+    get,
+    set
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
 
-  const joinCard = document.getElementById("joinCard");
-  const mapCard = document.getElementById("mapCard");
-  const statusText = document.getElementById("statusText");
-
-  let memberId = null;
-  let map = null;
-  let markers = {};
+  const eventNameEl = document.getElementById("eventName");
+  const eventMetaEl = document.getElementById("eventMeta");
+  const joinBtn = document.getElementById("joinBtn");
+  const errorEl = document.getElementById("error");
+  const nameInput = document.getElementById("nameInput");
 
   if (!eventId) {
-    statusText.textContent = "Hiányzó eseményazonosító.";
+    errorEl.textContent = "Hiányzó eseményazonosító";
+    joinBtn.disabled = true;
+    throw new Error("Missing eventId");
   }
 
-  document.getElementById("joinBtn").onclick = async () => {
-    if (!displayName.value.trim()) {
-      statusText.textContent = "Adj meg egy becenevet.";
+  const eventRef = ref(db, `events/${eventId}`);
+
+  // -------- ESEMÉNY BETÖLTÉSE --------
+  const snap = await get(eventRef);
+
+  if (!snap.exists()) {
+    errorEl.textContent = "Az esemény nem létezik";
+    joinBtn.disabled = true;
+    throw new Error("Event not found");
+  }
+
+  const event = snap.val();
+  const now = Date.now();
+
+  eventNameEl.textContent = event.name;
+  eventMetaEl.textContent = `${event.resortName} · ${event.startAt} – ${event.endAt}`;
+
+  if (event.status !== "active") {
+    errorEl.textContent = "Ez az esemény már nem aktív";
+    joinBtn.disabled = true;
+  }
+
+  // -------- CSATLAKOZÁS --------
+  joinBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+
+    if (!name) {
+      errorEl.textContent = "Add meg a neved";
       return;
     }
 
-    const eventSnap = await get(ref(db, `events/${eventId}`));
-    if (!eventSnap.exists()) {
-      statusText.textContent = "Az esemény nem létezik.";
-      return;
-    }
+    joinBtn.disabled = true;
 
-    const event = eventSnap.val();
-    if (event.status !== "active") {
-      statusText.textContent = "Az esemény nem aktív.";
-      return;
-    }
+    const userId =
+      localStorage.getItem("userId") || crypto.randomUUID();
 
-    const memberRef = push(ref(db, `events/${eventId}/members`));
-    memberId = memberRef.key;
+    localStorage.setItem("userId", userId);
+    localStorage.setItem("userName", name);
 
-    await set(memberRef, {
-      displayName: displayName.value.trim(),
-      joinedAt: Date.now()
+    await set(ref(db, `members/${eventId}/${userId}`), {
+      name,
+      status: "offline",
+      lastUpdate: Date.now()
     });
 
-    joinCard.style.display = "none";
-    mapCard.style.display = "block";
-
-    initMap();
-    startGps();
-    listenMembers();
+    // Tovább a térképre
+    location.href = `./map.html?eventId=${eventId}`;
   };
-
-  function initMap() {
-    map = L.map("map").setView([47.3, 13.3], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-      .addTo(map);
-  }
-
-  function startGps() {
-    navigator.geolocation.watchPosition(
-      pos => {
-        update(ref(db, `events/${eventId}/members/${memberId}`), {
-          location: {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            timestamp: Date.now()
-          }
-        });
-      },
-      err => {
-        statusText.textContent = "GPS hiba: " + err.message;
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 15000,
-        timeout: 10000
-      }
-    );
-  }
-
-  function listenMembers() {
-    onValue(ref(db, `events/${eventId}/members`), snap => {
-      const members = snap.val() || {};
-
-      Object.entries(members).forEach(([id, m]) => {
-        if (!m.location) return;
-
-        if (!markers[id]) {
-          markers[id] = L.marker([
-            m.location.lat,
-            m.location.lng
-          ])
-            .addTo(map)
-            .bindPopup(m.displayName);
-        } else {
-          markers[id].setLatLng([
-            m.location.lat,
-            m.location.lng
-          ]);
-        }
-      });
-    });
-  }
-</script>
-
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/team-ski-tracker/service-worker.js");
-  }
 </script>
 
 </body>

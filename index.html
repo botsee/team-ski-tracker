@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Team Ski Tracker – Admin</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- PWA -->
@@ -11,8 +10,17 @@
   <meta name="theme-color" content="#1f6f8b">
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Distortable Image -->
+  <link
+    rel="stylesheet"
+    href="lib/leaflet-distortableimage/leaflet.distortableimage.css">
+  <script
+    src="lib/leaflet-distortableimage/leaflet.distortableimage.js"></script>
 
   <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
@@ -31,7 +39,7 @@
       font-weight: bold;
     }
     main {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: auto;
       padding: 16px;
     }
@@ -42,7 +50,7 @@
       margin-bottom: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
-    input, select, button {
+    input, button {
       width: 100%;
       padding: 10px;
       margin-top: 8px;
@@ -54,6 +62,22 @@
       background: #1f6f8b;
       color: white;
       border: none;
+      cursor: pointer;
+    }
+    ul {
+      padding-left: 18px;
+    }
+    li {
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    #map {
+      height: 520px;
+      border-radius: 12px;
+    }
+    .small {
+      font-size: 13px;
+      color: #555;
     }
   </style>
 </head>
@@ -63,14 +87,6 @@
 <header>Team Ski Tracker – Admin</header>
 
 <main>
-
-<div class="card">
-  <h2>Új esemény</h2>
-  <input id="eventName" placeholder="Esemény neve">
-  <input id="fromDate" type="datetime-local">
-  <input id="toDate" type="datetime-local">
-  <button id="createEventBtn">Esemény létrehozása</button>
-</div>
 
 <div class="card">
   <h2>Események</h2>
@@ -83,52 +99,140 @@
   <div id="qr"></div>
 </div>
 
+<div class="card">
+  <h2>Sítérkép feltöltés (húzd a térképre)</h2>
+  <input type="file" id="imageInput" accept="image/*">
+  <button id="saveSkiMapBtn">Sítérkép mentése</button>
+  <p class="small">
+    Feltöltés után húzd, méretezd és forgasd a térképen, majd mentsd.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Térkép</h2>
+  <div id="map"></div>
+</div>
+
 </main>
 
 <script type="module">
   import { db } from "./js/config.js";
-  import { ref, push, set, onValue }
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import {
+    ref,
+    onValue,
+    update
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   const eventList = document.getElementById("eventList");
   const joinLink = document.getElementById("joinLink");
   const qrDiv = document.getElementById("qr");
+  const imageInput = document.getElementById("imageInput");
+  const saveBtn = document.getElementById("saveSkiMapBtn");
 
-  // 🔥 EZ A KULCS
-  function getBasePath() {
-    const path = window.location.pathname;
-    return window.location.origin + path.substring(0, path.lastIndexOf("/") + 1);
-  }
+  let selectedEventId = null;
+  let map;
+  let overlay = null;
 
-  document.getElementById("createEventBtn").onclick = async () => {
-    const refEvent = push(ref(db, "events"));
-    await set(refEvent, {
-      name: eventName.value,
-      from: fromDate.value,
-      to: toDate.value,
-      status: "active"
-    });
-  };
+  // 🗺️ MAP INIT
+  map = L.map("map").setView([47.3, 13.3], 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    .addTo(map);
 
+  // 📋 EVENT LIST
   onValue(ref(db, "events"), snap => {
     eventList.innerHTML = "";
     const events = snap.val() || {};
 
     Object.entries(events).forEach(([id, e]) => {
       const li = document.createElement("li");
-      li.textContent = e.name;
-      li.onclick = () => {
-        const joinUrl =
-  "https://botsee.github.io/team-ski-tracker/join.html?eventId=" + id;
-
-        joinLink.href = joinUrl;
-        joinLink.textContent = joinUrl;
-        qrDiv.innerHTML = "";
-        new QRCode(qrDiv, joinUrl);
-      };
+      li.textContent = e.name || id;
+      li.onclick = () => selectEvent(id);
       eventList.appendChild(li);
     });
   });
+
+  function selectEvent(eventId) {
+    selectedEventId = eventId;
+
+    const joinUrl =
+      "https://botsee.github.io/team-ski-tracker/join.html?eventId=" + eventId;
+
+    joinLink.href = joinUrl;
+    joinLink.textContent = joinUrl;
+
+    qrDiv.innerHTML = "";
+    new QRCode(qrDiv, joinUrl);
+
+    // betöltjük, ha van már sítérkép
+    onValue(ref(db, `events/${eventId}/skiMap`), snap => {
+      const skiMap = snap.val();
+      if (skiMap && skiMap.imageUrl && skiMap.corners) {
+        if (overlay) map.removeLayer(overlay);
+
+        overlay = L.distortableImageOverlay(skiMap.imageUrl, {
+          corners: [
+            skiMap.corners.topLeft,
+            skiMap.corners.topRight,
+            skiMap.corners.bottomRight,
+            skiMap.corners.bottomLeft
+          ],
+          actions: [
+            L.DistortableImage.Edit,
+            L.DistortableImage.Rotate,
+            L.DistortableImage.Scale
+          ]
+        }).addTo(map);
+      }
+    });
+  }
+
+  // 📤 IMAGE UPLOAD (LOCAL PREVIEW)
+  imageInput.onchange = e => {
+    if (!selectedEventId) {
+      alert("Előbb válassz eseményt.");
+      imageInput.value = "";
+      return;
+    }
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (overlay) map.removeLayer(overlay);
+
+      overlay = L.distortableImageOverlay(reader.result, {
+        actions: [
+          L.DistortableImage.Edit,
+          L.DistortableImage.Rotate,
+          L.DistortableImage.Scale
+        ]
+      }).addTo(map);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 💾 SAVE SKI MAP
+  saveBtn.onclick = async () => {
+    if (!overlay || !selectedEventId) {
+      alert("Nincs mit menteni.");
+      return;
+    }
+
+    const corners = overlay.getCorners();
+
+    await update(ref(db, `events/${selectedEventId}/skiMap`), {
+      imageUrl: overlay._url,
+      corners: {
+        topLeft: corners[0],
+        topRight: corners[1],
+        bottomRight: corners[2],
+        bottomLeft: corners[3]
+      }
+    });
+
+    alert("Sítérkép elmentve.");
+  };
 </script>
 
 <script>
