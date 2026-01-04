@@ -32,29 +32,29 @@
       --shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
-    *{box-sizing:border-box}
+    * { box-sizing:border-box }
 
-    body{
+    body {
       margin:0;
       background:var(--bg);
       color:var(--text);
       font-family:system-ui,-apple-system,"Inter",sans-serif;
     }
 
-    #app{
+    #app {
       position:relative;
       width:100vw;
       height:100vh;
       overflow:hidden;
     }
 
-    #map{
+    #map {
       position:absolute;
       inset:0;
       z-index:0;
     }
 
-    #map::after{
+    #map::after {
       content:"";
       position:absolute;
       inset:0;
@@ -63,7 +63,7 @@
       z-index:1;
     }
 
-    #sidebar{
+    #sidebar {
       position:absolute;
       z-index:10;
       background:var(--panel-soft);
@@ -74,7 +74,7 @@
 
     @media(min-width:769px){
       #sidebar{
-        top:16px;left:16px;bottom:16px;
+        top:16px; left:16px; bottom:16px;
         width:320px;
         border-radius:var(--r-lg);
         padding:16px;
@@ -84,7 +84,7 @@
 
     @media(max-width:768px){
       #sidebar{
-        left:0;right:0;bottom:0;
+        left:0; right:0; bottom:0;
         max-height:40vh;
         padding:12px 14px 18px;
         border-radius:var(--r-lg) var(--r-lg) 0 0;
@@ -92,7 +92,7 @@
       }
       #sidebar::before{
         content:"";
-        width:44px;height:4px;
+        width:44px; height:4px;
         background:rgba(255,255,255,.25);
         border-radius:4px;
         margin:4px auto 10px;
@@ -100,28 +100,15 @@
       }
     }
 
-    #eventHeader{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:12px;
-    }
-
-    #eventName{
-      margin:0;
-      font-size:18px;
-      font-weight:600;
-    }
-
-    .section{margin-top:14px}
-    .section strong{
+    .section { margin-top:14px }
+    .section strong {
       font-size:12px;
       color:var(--muted);
       display:block;
       margin-bottom:6px;
     }
 
-    .btn{
+    .btn {
       border:none;
       background:rgba(255,255,255,.08);
       color:var(--text);
@@ -132,41 +119,47 @@
       width:100%;
     }
 
-    .btn.green{background:rgba(46,204,113,.18)}
-    .btn.blue{background:rgba(52,152,219,.18)}
-    .btn.yellow{background:rgba(241,196,15,.18)}
+    .btn.icon {
+      padding:10px;
+      font-size:18px;
+    }
 
-    .state-grid{
+    .btn.green { background:rgba(46,204,113,.18) }
+    .btn.blue  { background:rgba(52,152,219,.18) }
+    .btn.yellow{ background:rgba(241,196,15,.18) }
+
+    .state-grid {
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:8px;
     }
 
-    #members{
+    #members {
       display:grid;
       gap:8px;
     }
 
     @media(max-width:768px){
-      #members{grid-template-columns:repeat(3,1fr)}
+      #members{ grid-template-columns:repeat(3,1fr) }
     }
     @media(min-width:769px){
-      #members{grid-template-columns:1fr}
+      #members{ grid-template-columns:1fr }
     }
 
-    .member{
+    .member {
       background:rgba(255,255,255,.07);
       border-radius:var(--r-sm);
       padding:8px;
       cursor:pointer;
     }
-    .member.offline{opacity:.55}
 
-    .member-name{font-size:13px;font-weight:600}
-    .member-state{font-size:11px;margin-top:4px}
-    .time{font-size:10px;color:var(--muted)}
+    .member.offline { opacity:.55 }
 
-    .badge{
+    .member-name { font-size:13px; font-weight:600 }
+    .member-state{ font-size:11px; margin-top:4px }
+    .time { font-size:10px; color:var(--muted) }
+
+    .badge {
       background:rgba(0,0,0,.35);
       font-size:10px;
       padding:1px 5px;
@@ -174,7 +167,7 @@
       margin-left:4px;
     }
 
-    .stats{
+    .stats {
       background:rgba(255,255,255,.06);
       border-radius:var(--r-md);
       padding:10px;
@@ -182,15 +175,15 @@
       margin-top:14px;
     }
 
-    .stat-row{
+    .stat-row {
       display:flex;
       justify-content:space-between;
       padding:3px 0;
       color:var(--muted);
     }
 
-    /* JOIN MODAL */
-    .modal{
+    /* MODAL (JOIN + STAT) */
+    .modal {
       position:fixed;
       inset:0;
       background:rgba(0,0,0,.6);
@@ -200,23 +193,42 @@
       z-index:30;
     }
 
-    .modal-content{
+    .modal-content {
       background:var(--panel);
       padding:20px;
       border-radius:var(--r-lg);
       width:90%;
-      max-width:320px;
-      text-align:center;
+      max-width:360px;
       box-shadow:var(--shadow);
+      max-height:80vh;
+      overflow-y:auto;
     }
 
-    #qr{margin:14px auto}
+    .modal h3 {
+      margin-top:0;
+      margin-bottom:10px;
+    }
 
-    .link{
+    #qr { margin:14px auto }
+
+    .link {
       font-size:12px;
       word-break:break-all;
       color:var(--muted);
       margin-top:10px;
+    }
+
+    .stat-card {
+      background:rgba(255,255,255,.06);
+      border-radius:var(--r-md);
+      padding:10px;
+      margin-bottom:10px;
+      font-size:12px;
+    }
+
+    .stat-card strong {
+      display:block;
+      margin-bottom:6px;
     }
   </style>
 </head>
@@ -226,9 +238,6 @@
   <div id="map"></div>
 
   <div id="sidebar">
-    <div id="eventHeader">
-      <h2 id="eventName">Esemény</h2>
-    </div>
 
     <div class="section">
       <strong>Saját állapot</strong>
@@ -252,21 +261,22 @@
       <div class="stat-row"><span>🔵 Felvonó</span><span id="liftTime">0:00</span></div>
       <div class="stat-row"><span>🟡 Pihenő</span><span id="restTime">0:00</span></div>
       <div class="stat-row"><span>📏 Km</span><span id="distanceKm">0.00 km</span></div>
-      <div class="stat-row"><span>🚀 Átlag</span><span id="avgSpeed">— km/h</span></div>
       <div class="stat-row"><span>⚡ Max</span><span id="maxSpeed">— km/h</span></div>
     </div>
 
     <div class="section">
-      <button class="btn" onclick="goHome()">⬅️ Vissza</button>
-      <button class="btn" id="joinBtn" style="margin-top:8px;display:none" onclick="openJoin()">🔗 Csatlakozás</button>
+      <button class="btn icon" title="Vissza a főoldalra" onclick="goHome()">⬅️</button>
+      <button class="btn icon" id="joinBtn" style="margin-top:8px;display:none" onclick="openJoin()">🔗</button>
+      <button class="btn icon" id="statBtn" style="margin-top:8px;display:none" onclick="openStat()">📊</button>
     </div>
+
   </div>
 </div>
 
 <!-- JOIN MODAL -->
 <div class="modal" id="joinModal">
   <div class="modal-content">
-    <strong>Csatlakozás</strong>
+    <h3>Csatlakozás</h3>
     <div id="qr"></div>
     <div class="link" id="joinLink"></div>
     <button class="btn" style="margin-top:10px" onclick="copyJoin()">Link másolása</button>
@@ -274,13 +284,19 @@
   </div>
 </div>
 
+<!-- OWNER STAT MODAL -->
+<div class="modal" id="statModal">
+  <div class="modal-content">
+    <h3>Tag statisztikák</h3>
+    <div id="statList"></div>
+    <button class="btn" style="margin-top:10px" onclick="closeStat()">Bezárás</button>
+  </div>
+</div>
+
 <script type="module">
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-  import { OSMContext } from "../js/osmContext.js";
-
-  const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
@@ -289,99 +305,92 @@
 
   if (!eventId || !userId) location.href = "../index.html";
 
-  let isOwner=false;
-  let joinLink="";
+  let isOwner = false;
+  let joinLink = "";
+  let memberStats = {};
 
-  /* MAP */
-  const map=L.map("map");
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
-
-  let firstFix=true,selfMarker=null,markers={},eventStartTime=null,osm=null;
-  let lastState=null,lastStateChange=null,skiMs=0,liftMs=0,restMs=0;
-  let totalDistanceKm=0,lastGpsPoint=null,maxSpeedKmh=0;
-
-  const fmt=ms=>{const m=Math.floor(ms/60000),h=Math.floor(m/60);return`${h}:${(m%60).toString().padStart(2,"0")}`};
-
-  onValue(ref(db,`events/${eventId}`),async s=>{
-    if(!s.exists())return;
-    const e=s.val();
-    document.getElementById("eventName").textContent=e.name;
-    isOwner=e.ownerId===userId;
-    if(isOwner){
-      document.getElementById("joinBtn").style.display="block";
-      joinLink=`${location.origin}/user/map.html?eventId=${eventId}`;
-    }
-    if(e.createdAt&&!eventStartTime){
-      eventStartTime=e.createdAt;
-      setInterval(()=>eventDuration.textContent=fmt(Date.now()-eventStartTime),60000);
-    }
-    if(!osm&&e.resortCenter){
-      osm=new OSMContext(eventId,e.resortCenter,e.resortRadiusKm||5);
-      await osm.init();
-    }
-  });
-
-  navigator.geolocation.watchPosition(p=>{
-    const {latitude:lat,longitude:lng}=p.coords,now=Date.now();
-    if(firstFix){map.setView([lat,lng],15,{animate:true});firstFix=false;}
-    selfMarker?selfMarker.setLatLng([lat,lng]):selfMarker=L.marker([lat,lng]).addTo(map);
-    if(lastGpsPoint&&lastState==="skiing"){
-      const R=6371,t=x=>x*Math.PI/180;
-      const dA=t(lat-lastGpsPoint.lat),dB=t(lng-lastGpsPoint.lng);
-      const d=R*2*Math.atan2(Math.sqrt(Math.sin(dA/2)**2+Math.cos(t(lat))*Math.cos(t(lastGpsPoint.lat))*Math.sin(dB/2)**2),
-                             Math.sqrt(1-(Math.sin(dA/2)**2+Math.cos(t(lat))*Math.cos(t(lastGpsPoint.lat))*Math.sin(dB/2)**2)));
-      const dt=(now-lastGpsPoint.ts)/3600000;
-      if(dt>0){totalDistanceKm+=d;maxSpeedKmh=Math.max(maxSpeedKmh,d/dt);}
-    }
-    lastGpsPoint={lat,lng,ts:now};
-    distanceKm.textContent=totalDistanceKm.toFixed(2)+" km";
-    maxSpeed.textContent=maxSpeedKmh?maxSpeedKmh.toFixed(1)+" km/h":"— km/h";
-    update(ref(db,`members/${eventId}/${userId}`),{name:userName,lat,lng,lastUpdate:now});
-  });
-
-  onValue(ref(db,`members/${eventId}`),s=>{
-    members.innerHTML="";const now=Date.now(),data=s.val()||{};
-    Object.entries(data).forEach(([id,m])=>{
-      if(!m.lat||!m.lng)return;
-      const off=m.manualState==="offline"||(now-m.lastUpdate>OFFLINE_TIMEOUT);
-      const st=m.activityState||"rest";
-      if(id===userId){
-        if(lastState&&lastState!=="offline"){
-          const d=now-lastStateChange;
-          if(lastState==="skiing")skiMs+=d;
-          if(lastState==="lift")liftMs+=d;
-          if(lastState==="rest")restMs+=d;
-        }
-        lastState=off?"offline":st;lastStateChange=now;
-        skiTime.textContent=fmt(skiMs);liftTime.textContent=fmt(liftMs);restTime.textContent=fmt(restMs);
-      }
-      const div=document.createElement("div");
-      div.className="member"+(off?" offline":"");
-      div.innerHTML=`<div class="member-name">${m.name||"?"}${id===userId?'<span class="badge">Te</span>':''}</div>
-        <div class="member-state">${off?"⚪ Offline":st}</div>
-        <div class="time">${Math.floor((now-m.lastUpdate)/60000)}p</div>`;
-      div.onclick=()=>map.setView([m.lat,m.lng],16,{animate:true});
-      members.appendChild(div);
-    });
-  });
-
-  window.setState=s=>update(ref(db,`members/${eventId}/${userId}`),{
-    activityState:s,manualState:s==="offline"?"offline":null,lastUpdate:Date.now()
-  });
-
-  window.goHome=()=>location.href="../index.html";
-
-  window.openJoin=()=>{
-    document.getElementById("joinLink").textContent=joinLink;
-    document.getElementById("qr").innerHTML="";
-    new QRCode(document.getElementById("qr"),{
-      text:joinLink,width:180,height:180,colorDark:"#ffffff",colorLight:"transparent"
-    });
-    document.getElementById("joinModal").style.display="flex";
+  const fmt = ms => {
+    const m = Math.floor(ms / 60000);
+    const h = Math.floor(m / 60);
+    return `${h}:${(m % 60).toString().padStart(2,"0")}`;
   };
 
-  window.closeJoin=()=>document.getElementById("joinModal").style.display="none";
-  window.copyJoin=()=>{navigator.clipboard.writeText(joinLink);alert("Link másolva");};
+  onValue(ref(db, `events/${eventId}`), snap => {
+    if (!snap.exists()) return;
+    const e = snap.val();
+    isOwner = e.ownerId === userId;
+    if (isOwner) {
+      document.getElementById("joinBtn").style.display = "block";
+      document.getElementById("statBtn").style.display = "block";
+      joinLink = `${location.origin}/user/map.html?eventId=${eventId}`;
+    }
+    if (e.createdAt) {
+      setInterval(() => {
+        eventDuration.textContent = fmt(Date.now() - e.createdAt);
+      }, 60000);
+    }
+  });
+
+  /* OWNER STAT – csak gyűjtés és render */
+  onValue(ref(db, `members/${eventId}`), snap => {
+    const data = snap.val() || {};
+    memberStats = {};
+    Object.entries(data).forEach(([uid, m]) => {
+      memberStats[uid] = {
+        name: m.name || "?",
+        ski: m.skiMs || 0,
+        lift: m.liftMs || 0,
+        rest: m.restMs || 0,
+        km: m.distanceKm || 0,
+        max: m.maxSpeed || 0
+      };
+    });
+  });
+
+  window.openStat = () => {
+    const list = document.getElementById("statList");
+    list.innerHTML = "";
+    Object.values(memberStats).forEach(s => {
+      const div = document.createElement("div");
+      div.className = "stat-card";
+      div.innerHTML = `
+        <strong>${s.name}</strong>
+        🟢 Csúszás: ${fmt(s.ski)}<br/>
+        🔵 Felvonó: ${fmt(s.lift)}<br/>
+        🟡 Pihenő: ${fmt(s.rest)}<br/>
+        📏 Km: ${s.km.toFixed(2)}<br/>
+        ⚡ Max: ${s.max.toFixed(1)} km/h
+      `;
+      list.appendChild(div);
+    });
+    document.getElementById("statModal").style.display = "flex";
+  };
+
+  window.closeStat = () =>
+    document.getElementById("statModal").style.display = "none";
+
+  window.goHome = () => location.href = "../index.html";
+
+  window.openJoin = () => {
+    document.getElementById("joinLink").textContent = joinLink;
+    document.getElementById("qr").innerHTML = "";
+    new QRCode(document.getElementById("qr"), {
+      text: joinLink,
+      width: 180,
+      height: 180,
+      colorDark: "#ffffff",
+      colorLight: "transparent"
+    });
+    document.getElementById("joinModal").style.display = "flex";
+  };
+
+  window.closeJoin = () =>
+    document.getElementById("joinModal").style.display = "none";
+
+  window.copyJoin = () => {
+    navigator.clipboard.writeText(joinLink);
+    alert("Link másolva");
+  };
 </script>
 </body>
 </html>
