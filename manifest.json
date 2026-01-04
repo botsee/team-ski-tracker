@@ -1,7 +1,7 @@
 {
   "name": "Team Ski Tracker",
   "short_name": "SkiTracker",
-  "start_url": "/team-ski-tracker/admin/index.html",
+  "start_url": "/team-ski-tracker/",
   "scope": "/team-ski-tracker/",
   "display": "standalone",
   "background_color": "#1f6f8b",
