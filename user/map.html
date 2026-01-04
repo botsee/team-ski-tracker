@@ -5,7 +5,6 @@
   <title>Esemény – Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,34 +12,23 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-    }
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #app { display: flex; height: 100vh; }
 
-    #app {
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-    }
-
-    /* ----- SIDEBAR ----- */
+    /* SIDEBAR */
     #sidebar {
-      width: 280px;
+      width: 300px;
       background: #1f6f8b;
       color: white;
-      display: flex;
-      flex-direction: column;
       padding: 14px;
       box-sizing: border-box;
+      overflow-y: auto;
     }
 
-    #sidebar h2 {
-      margin: 0 0 12px;
-      font-size: 18px;
-    }
+    #sidebar h2 { margin-top: 0; font-size: 18px; }
 
     .menu-btn {
+      width: 100%;
       background: rgba(255,255,255,0.15);
       border: none;
       color: white;
@@ -51,51 +39,50 @@
       text-align: left;
     }
 
-    .menu-btn:hover {
-      background: rgba(255,255,255,0.25);
-    }
-
-    .section {
-      margin-top: 16px;
-    }
+    .section { margin-top: 18px; }
 
     .member {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 14px;
       padding: 6px 0;
       border-bottom: 1px solid rgba(255,255,255,0.15);
     }
 
-    .host {
-      font-weight: bold;
+    .member .left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* ----- MAP ----- */
-    #map {
-      flex: 1;
+    .member .time {
+      font-size: 12px;
+      opacity: 0.8;
     }
+
+    #map { flex: 1; }
   </style>
 </head>
 
 <body>
 
 <div id="app">
-
-  <!-- SIDEBAR -->
   <div id="sidebar">
     <h2 id="eventName">Esemény</h2>
 
-    <button class="menu-btn" onclick="goHome()">⬅️ Vissza</button>
+    <button class="menu-btn" onclick="goHome()">⬅️ Vissza a főoldalra</button>
 
     <div class="section">
-      <strong>Állapot</strong>
+      <strong>Saját állapot</strong>
+      <button class="menu-btn" onclick="setState('auto')">▶️ Automatikus</button>
       <button class="menu-btn" onclick="setState('rest')">☕ Pihenés</button>
       <button class="menu-btn" onclick="setState('offline')">🚫 Offline</button>
-      <button class="menu-btn" onclick="setState('auto')">▶️ Automatikus</button>
     </div>
 
     <div class="section" id="hostSection" style="display:none">
-      <strong>HOST funkciók</strong>
-      <button class="menu-btn" onclick="showQr()">📎 Meghívó (QR)</button>
+      <strong>HOST</strong>
+      <button class="menu-btn" onclick="showQr()">📎 Meghívó</button>
       <button class="menu-btn" onclick="closeEvent()">🔒 Lezárás</button>
     </div>
 
@@ -105,9 +92,7 @@
     </div>
   </div>
 
-  <!-- MAP -->
   <div id="map"></div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
@@ -119,23 +104,18 @@
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
-
   const userId = localStorage.getItem("userId");
-  const userName = localStorage.getItem("userName") || "Felhasználó";
+  const userName = localStorage.getItem("userName") || "Ismeretlen";
 
-  if (!eventId || !userId) {
-    location.href = "../index.html";
-  }
+  if (!eventId || !userId) location.href = "../index.html";
 
-  // ----- MAP -----
-  const map = L.map("map").setView([47.4979, 19.0402], 13);
-
+  /* MAP */
+  const map = L.map("map").setView([47.5, 19.04], 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
   }).addTo(map);
 
   const markers = {};
-
   function updateMarker(id, lat, lng, label) {
     if (markers[id]) {
       markers[id].setLatLng([lat, lng]).setPopupContent(label);
@@ -144,56 +124,64 @@
     }
   }
 
-  // ----- EVENT -----
-  let isHost = false;
-
+  /* EVENT */
   onValue(ref(db, `events/${eventId}`), snap => {
     const e = snap.val();
     if (!e) return;
-
     document.getElementById("eventName").textContent = e.name;
-
     if (e.ownerId === userId) {
-      isHost = true;
       document.getElementById("hostSection").style.display = "block";
     }
   });
 
-  // ----- MEMBERS -----
+  /* MEMBERS */
   onValue(ref(db, `members/${eventId}`), snap => {
     const list = document.getElementById("members");
     list.innerHTML = "";
 
     const members = snap.val() || {};
-
     Object.entries(members).forEach(([id, m]) => {
+      const icon = getStateIcon(m);
+      const ago = timeAgo(m.lastUpdate);
+
       const div = document.createElement("div");
-      div.className = "member" + (id === userId ? " host" : "");
-      div.textContent = m.name || "?";
+      div.className = "member";
+      div.innerHTML = `
+        <div class="left">${icon} ${m.name || "?"}</div>
+        <div class="time">${ago}</div>
+      `;
       list.appendChild(div);
 
       if (m.lat && m.lng) {
-        updateMarker(id, m.lat, m.lng, m.name);
+        updateMarker(id, m.lat, m.lng, `${m.name}<br>${m.activity || ""}`);
       }
     });
   });
 
-  // ----- ACTIONS -----
-  window.goHome = () => {
-    location.href = "../index.html";
-  };
+  function getStateIcon(m) {
+    if (m.manualState === "offline") return "🚫";
+    if (m.activity?.includes("Csúszik")) return "🟢";
+    if (m.activity?.includes("Felvonó")) return "🚡";
+    if (m.activity?.includes("Pihen")) return "☕";
+    return "⚪";
+  }
 
-  window.setState = state => {
-    update(ref(db, `members/${eventId}/${userId}`), {
-      manualState: state
-    });
-  };
+  function timeAgo(ts) {
+    if (!ts) return "";
+    const min = Math.floor((Date.now() - ts) / 60000);
+    if (min < 1) return "most";
+    if (min === 1) return "1 perce";
+    return `${min} perce`;
+  }
+
+  /* ACTIONS */
+  window.goHome = () => location.href = "../index.html";
+  window.setState = s =>
+    update(ref(db, `members/${eventId}/${userId}`), { manualState: s });
 
   window.showQr = () => {
-    const url = location.origin + location.pathname.replace("/user/map.html", "/user/join.html") + `?eventId=${eventId}`;
-    QRCode.toCanvas(document.createElement("canvas"), url, () => {
-      alert("Meghívó link:\n" + url);
-    });
+    const url = location.origin + "/team-ski-tracker/user/join.html?eventId=" + eventId;
+    alert("Meghívó:\n" + url);
   };
 
   window.closeEvent = () => {
@@ -201,7 +189,6 @@
       update(ref(db, `events/${eventId}`), { status: "ended" });
     }
   };
-
 </script>
 
 </body>
