@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin – Esemény létrehozás</title>
+  <title>Esemény létrehozása</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -52,16 +52,6 @@
       border-radius: 6px;
       cursor: pointer;
     }
-
-    button:disabled {
-      background: #aaa;
-    }
-
-    .hint {
-      font-size: 13px;
-      color: #666;
-      margin-top: 4px;
-    }
   </style>
 </head>
 
@@ -72,13 +62,12 @@
 <main>
   <label>
     Esemény neve
-    <input id="name" placeholder="Pl. Hétvégi síelés" />
+    <input id="name" />
   </label>
 
   <label>
     Sítér neve
-    <input id="resort" placeholder="Pl. St. Anton am Arlberg" />
-    <div class="hint">Pontosan úgy írd, ahogy a térképen szerepel</div>
+    <input id="resort" />
   </label>
 
   <label>
@@ -96,55 +85,37 @@
 
 <script type="module">
   import { db } from "../js/config.js";
-  import {
-    ref,
-    push
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, push } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   const btn = document.getElementById("createBtn");
+  const userId = localStorage.getItem("userId");
 
-  btn.addEventListener("click", async () => {
+  btn.onclick = async () => {
     const name = document.getElementById("name").value.trim();
-    const resortName = document.getElementById("resort").value.trim();
+    const resort = document.getElementById("resort").value.trim();
     const startAt = document.getElementById("startAt").value;
     const endAt = document.getElementById("endAt").value;
 
-    if (!name || !resortName || !startAt || !endAt) {
-      alert("Minden mező kitöltése kötelező");
-      return;
-    }
-
-    if (startAt >= endAt) {
-      alert("A befejezés nem lehet korábbi, mint a kezdés");
+    if (!name || !resort || !startAt || !endAt) {
+      alert("Minden mező kötelező");
       return;
     }
 
     btn.disabled = true;
 
-    try {
-      const eventsRef = ref(db, "events");
+    await push(ref(db, "events"), {
+      name,
+      resortName: resort,
+      startAt,
+      endAt,
+      status: "active",
+      ownerId: userId,
+      createdAt: Date.now()
+    });
 
-      const newEventRef = await push(eventsRef, {
-        name,
-        resortName,
-        startAt,
-        endAt,
-        status: "active",
-        createdAt: Date.now()
-      });
-
-      // 👉 DEBUG – fontos visszajelzés
-      console.log("Esemény létrehozva:", newEventRef.key);
-
-      // Vissza az admin eseménylistára
-      location.href = "../index.html";
-
-    } catch (err) {
-      console.error("Hiba esemény létrehozáskor:", err);
-      alert("Hiba történt az esemény létrehozásakor");
-      btn.disabled = false;
-    }
-  });
+    location.href = "../index.html";
+  };
 </script>
 
 </body>

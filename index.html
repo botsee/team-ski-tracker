@@ -18,19 +18,6 @@
       padding: 16px;
       font-size: 20px;
       font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    header button {
-      background: white;
-      color: #1f6f8b;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
     }
 
     main {
@@ -40,8 +27,21 @@
     }
 
     h2 {
-      margin-top: 24px;
+      margin-top: 28px;
       font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    h2 button {
+      background: #1f6f8b;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
     }
 
     .event {
@@ -55,11 +55,7 @@
       align-items: center;
     }
 
-    .event .info {
-      flex: 1;
-    }
-
-    .event h3 {
+    .info h3 {
       margin: 0 0 4px;
       font-size: 16px;
     }
@@ -74,7 +70,6 @@
       padding: 4px 8px;
       border-radius: 999px;
       margin-left: 6px;
-      white-space: nowrap;
     }
 
     .host {
@@ -88,7 +83,6 @@
     }
 
     .actions button {
-      margin-left: 8px;
       padding: 6px 10px;
       font-size: 14px;
       cursor: pointer;
@@ -104,13 +98,13 @@
 
 <body>
 
-<header>
-  Team Ski Tracker
-  <button onclick="location.href='./admin/create.html'">➕ Új esemény</button>
-</header>
+<header>Team Ski Tracker</header>
 
 <main>
-  <h2>🟦 Saját eseményeim</h2>
+  <h2>
+    🟦 Saját eseményeim
+    <button onclick="location.href='./admin/create.html'">➕ Új esemény</button>
+  </h2>
   <div id="owned"></div>
 
   <h2>🟩 Események, amikhez csatlakoztam</h2>
@@ -134,21 +128,17 @@
   let eventsCache = {};
   let memberships = {};
 
-  // --- ESEMÉNYEK ---
   onValue(ref(db, "events"), snap => {
     eventsCache = snap.val() || {};
     render();
   });
 
-  // --- TAGSÁGOK ---
   onValue(ref(db, "members"), snap => {
     const all = snap.val() || {};
     memberships = {};
 
     Object.entries(all).forEach(([eventId, members]) => {
-      if (members[userId]) {
-        memberships[eventId] = members[userId];
-      }
+      if (members[userId]) memberships[eventId] = true;
     });
 
     render();
@@ -174,11 +164,9 @@
         <div class="info">
           <h3>
             ${e.name}
-            ${
-              isOwner
-                ? `<span class="badge host">HOST</span>`
-                : `<span class="badge member">MEMBER</span>`
-            }
+            ${isOwner
+              ? `<span class="badge host">HOST</span>`
+              : `<span class="badge member">MEMBER</span>`}
           </h3>
           <div class="meta">${e.resortName || ""}</div>
         </div>
@@ -196,13 +184,8 @@
       }
     });
 
-    if (!hasOwned) {
-      ownedEl.innerHTML = `<div class="empty">Nincs saját eseményed</div>`;
-    }
-
-    if (!hasJoined) {
-      joinedEl.innerHTML = `<div class="empty">Még nem csatlakoztál eseményhez</div>`;
-    }
+    if (!hasOwned) ownedEl.innerHTML = `<div class="empty">Nincs saját eseményed</div>`;
+    if (!hasJoined) joinedEl.innerHTML = `<div class="empty">Még nem csatlakoztál eseményhez</div>`;
   }
 
   window.openEvent = id => {
