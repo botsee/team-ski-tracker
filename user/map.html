@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
@@ -35,7 +32,6 @@
       border-radius: 20px;
       font-size: 14px;
       z-index: 1000;
-      pointer-events: none;
       text-align: center;
       max-width: 90%;
     }
@@ -75,7 +71,7 @@
 <body>
 
 <div id="map"></div>
-<div class="status" id="status">Pozíció meghatározása…</div>
+<div class="status" id="status">GPS indítása…</div>
 
 <div class="controls">
   <button id="restBtn">☕ Pihenés / Hütte</button>
@@ -85,20 +81,13 @@
 
 <script type="module">
   import { db } from "../js/config.js";
-  import {
-    ref,
-    onValue,
-    update
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   import { ActivityEngine } from "../js/activityEngine.js";
-  import {
-    ActivityStateMachine,
-    StateTypes
-  } from "../js/stateMachine.js";
+  import { ActivityStateMachine, StateTypes } from "../js/stateMachine.js";
   import { OSMContext } from "../js/osmContext.js";
 
-  // -------- URL PARAM --------
+  // ---------- PARAMÉTEREK ----------
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
 
@@ -120,7 +109,7 @@
   const offlineBtn = document.getElementById("offlineBtn");
   const autoBtn = document.getElementById("autoBtn");
 
-  // -------- TÉRKÉP --------
+  // ---------- TÉRKÉP ----------
   const map = L.map("map").setView([47.4979, 19.0402], 13);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -128,10 +117,10 @@
     attribution: "© OpenStreetMap"
   }).addTo(map);
 
-  // -------- MARKEREK --------
+  // ---------- MARKEREK ----------
   const markers = {};
 
-  function updateMarker(id, lat, lng, label) {
+  function upsertMarker(id, lat, lng, label) {
     if (markers[id]) {
       markers[id].setLatLng([lat, lng]).setPopupContent(label);
     } else {
@@ -141,26 +130,18 @@
     }
   }
 
-  // -------- OSM INIT (cache-elve) --------
-  const osm = new OSMContext(
-    eventId,
-    { lat: 47.4979, lng: 19.0402 }, // később event location
-    6
-  );
-
+  // ---------- OSM CONTEXT ----------
+  const osm = new OSMContext(eventId, { lat: 47.4979, lng: 19.0402 }, 6);
   statusEl.textContent = "Sípálya adatok betöltése…";
   await osm.init();
 
-  // -------- ACTIVITY + STATE --------
+  // ---------- ACTIVITY + STATE ----------
   const activityEngine = new ActivityEngine();
 
   const stateMachine = new ActivityStateMachine(state => {
     let text = "Automatikus követés aktív";
 
-    if (
-      state.state === StateTypes.MANUAL_REST ||
-      state.state === StateTypes.MANUAL_HUT
-    ) {
+    if (state.state === StateTypes.MANUAL_REST || state.state === StateTypes.MANUAL_HUT) {
       text = "Pihenés mód – automatikus visszatérés 15 perc múlva";
     }
 
@@ -176,22 +157,19 @@
     });
   });
 
-  // -------- UI ESEMÉNYEK --------
   restBtn.onclick = () => stateMachine.setManualRest();
   offlineBtn.onclick = () => stateMachine.setManualOffline();
   autoBtn.onclick = () => stateMachine.startAutomatic();
 
-  // -------- TAGOK FIGYELÉSE --------
-  const membersRef = ref(db, `members/${eventId}`);
-
-  onValue(membersRef, snap => {
+  // ---------- TAGOK FIGYELÉSE ----------
+  onValue(ref(db, `members/${eventId}`), snap => {
     const members = snap.val() || {};
     const bounds = [];
 
     Object.entries(members).forEach(([id, m]) => {
       if (!m.lat || !m.lng) return;
-      const label = `${m.name || "?"}<br>${m.activity || ""}`;
-      updateMarker(id, m.lat, m.lng, label);
+      const label = `<b>${m.name || "?"}</b><br>${m.activity || ""}`;
+      upsertMarker(id, m.lat, m.lng, label);
       bounds.push([m.lat, m.lng]);
     });
 
@@ -200,7 +178,7 @@
     }
   });
 
-  // -------- GPS --------
+  // ---------- GPS ----------
   function sendPosition(pos) {
     if (stateMachine.getState() === StateTypes.MANUAL_OFFLINE) return;
 
@@ -228,15 +206,10 @@
     const ctx = osm.getContext(lat, lng, baseActivity);
 
     let label = "Pihen";
-    if (baseActivity === "skiing") {
-      label = "Csúszik" + (ctx ? ` – ${ctx.name}` : "");
-    }
-    if (baseActivity === "lift") {
-      label = "Felvonón" + (ctx ? ` – ${ctx.name}` : "");
-    }
-    if (baseActivity === "rest") {
-      label = "Pihen" + (ctx ? ` – ${ctx.name}` : "");
-    }
+    if (baseActivity === "skiing") label = "Csúszik";
+    if (baseActivity === "lift") label = "Felvonón";
+
+    if (ctx?.name) label += ` – ${ctx.name}`;
 
     update(ref(db, `members/${eventId}/${userId}`), {
       name: userName,
@@ -247,23 +220,20 @@
       lastUpdate: Date.now()
     });
 
-    updateMarker(userId, lat, lng, `${userName}<br>${label}`);
+    upsertMarker(userId, lat, lng, `<b>${userName}</b><br>${label}`);
     statusEl.textContent = label;
   }
 
-  function gpsError() {
+  function gpsError(err) {
+    console.error("GPS error:", err);
     statusEl.textContent = "GPS nem elérhető";
   }
 
-  navigator.geolocation.watchPosition(
-    sendPosition,
-    gpsError,
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 10000
-    }
-  );
+  navigator.geolocation.watchPosition(sendPosition, gpsError, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000
+  });
 </script>
 
 </body>

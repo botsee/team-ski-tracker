@@ -2,44 +2,67 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Monitor – Team Ski Tracker</title>
+  <title>Admin – Monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      height: 100vh;
+      background: #111;
+      color: white;
     }
 
-    #sidebar {
-      width: 300px;
+    header {
+      background: #1f6f8b;
+      padding: 12px 16px;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header button {
       background: white;
-      border-right: 1px solid #ddd;
-      overflow-y: auto;
+      color: #1f6f8b;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
     }
 
     #map {
-      flex: 1;
+      height: calc(100vh - 60px);
+      width: 100%;
+    }
+
+    .panel {
+      position: absolute;
+      top: 70px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 10px;
+      padding: 10px;
+      width: 220px;
+      max-height: calc(100vh - 90px);
+      overflow-y: auto;
+      z-index: 1000;
     }
 
     .member {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
+      padding: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 14px;
     }
 
-    .member:hover {
-      background: #f0f0f0;
+    .member:last-child {
+      border-bottom: none;
     }
 
     .member .name {
@@ -48,39 +71,28 @@
 
     .member .activity {
       font-size: 13px;
-      color: #555;
+      opacity: 0.85;
+    }
+
+    .member .status {
+      font-size: 12px;
       margin-top: 2px;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .online {
-      background: #d4f4dd;
-      color: #1b7a3a;
-    }
-
-    .offline {
-      background: #eee;
-      color: #666;
-    }
-
-    .manual {
-      background: #ffe0b2;
-      color: #8a5200;
-    }
+    .online { color: #2ecc71; }
+    .offline { color: #e74c3c; }
   </style>
 </head>
 
 <body>
 
-<div id="sidebar"></div>
+<header>
+  Admin – Élő monitor
+  <button onclick="history.back()">⬅ Vissza</button>
+</header>
+
 <div id="map"></div>
+<div class="panel" id="panel"></div>
 
 <script type="module">
   import { db } from "../js/config.js";
@@ -89,7 +101,7 @@
     onValue
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  // -------- URL PARAM --------
+  // -------- PARAM --------
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
 
@@ -97,6 +109,8 @@
     alert("Hiányzó eseményazonosító");
     throw new Error("Missing eventId");
   }
+
+  const panel = document.getElementById("panel");
 
   // -------- MAP --------
   const map = L.map("map").setView([47.4979, 19.0402], 13);
@@ -106,9 +120,10 @@
     attribution: "© OpenStreetMap"
   }).addTo(map);
 
+  // -------- MARKERS --------
   const markers = {};
 
-  function updateMarker(id, lat, lng, label) {
+  function upsertMarker(id, lat, lng, label) {
     if (markers[id]) {
       markers[id].setLatLng([lat, lng]).setPopupContent(label);
     } else {
@@ -118,58 +133,46 @@
     }
   }
 
-  // -------- MEMBERS --------
-  const sidebar = document.getElementById("sidebar");
-  const membersRef = ref(db, `members/${eventId}`);
+  function isOnline(lastUpdate) {
+    if (!lastUpdate) return false;
+    return Date.now() - lastUpdate < 30 * 1000;
+  }
 
-  onValue(membersRef, snap => {
+  // -------- MEMBERS LISTEN --------
+  onValue(ref(db, `members/${eventId}`), snap => {
     const members = snap.val() || {};
-    sidebar.innerHTML = "";
-
     const bounds = [];
 
+    panel.innerHTML = "";
+
     Object.entries(members).forEach(([id, m]) => {
-      if (!m.lat || !m.lng) return;
+      const online = isOnline(m.lastUpdate);
+      const statusText = online ? "online" : "offline";
 
-      const isOnline = Date.now() - (m.lastUpdate || 0) < 60000;
-      const isManual = m.trackingState && m.trackingState !== "auto";
-
-      // ---- LIST ITEM ----
+      // ---- PANEL LIST ----
       const div = document.createElement("div");
       div.className = "member";
 
-      let badgeHtml = `<span class="badge ${isOnline ? "online" : "offline"}">
-        ${isOnline ? "online" : "offline"}
-      </span>`;
-
-      if (isManual) {
-        badgeHtml += `<span class="badge manual">manuális</span>`;
-      }
-
       div.innerHTML = `
-        <div class="name">
-          ${m.name || "?"}
-          ${badgeHtml}
+        <div class="name">${m.name || "Ismeretlen"}</div>
+        <div class="activity">${m.activity || "–"}</div>
+        <div class="status ${online ? "online" : "offline"}">
+          ${statusText}
         </div>
-        <div class="activity">${m.activity || ""}</div>
       `;
 
-      div.onclick = () => {
-        map.setView([m.lat, m.lng], 16);
-        markers[id]?.openPopup();
-      };
+      panel.appendChild(div);
 
-      sidebar.appendChild(div);
-
-      // ---- MAP ----
-      updateMarker(
-        id,
-        m.lat,
-        m.lng,
-        `${m.name || "?"}<br>${m.activity || ""}`
-      );
-
-      bounds.push([m.lat, m.lng]);
+      // ---- MAP MARKER ----
+      if (m.lat && m.lng) {
+        const label = `
+          <b>${m.name || "Ismeretlen"}</b><br>
+          ${m.activity || ""}<br>
+          <small>${statusText}</small>
+        `;
+        upsertMarker(id, m.lat, m.lng, label);
+        bounds.push([m.lat, m.lng]);
+      }
     });
 
     if (bounds.length > 0) {
