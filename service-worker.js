@@ -1,4 +1,4 @@
-const CACHE_NAME = "team-ski-tracker-v2";
+const CACHE_NAME = "team-ski-tracker-v3";
 
 const APP_SHELL = [
   "/team-ski-tracker/",
