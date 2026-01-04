@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Új esemény létrehozása</title>
+  <title>Új esemény – Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -22,7 +22,7 @@
 
     main {
       padding: 16px;
-      max-width: 500px;
+      max-width: 480px;
       margin: auto;
     }
 
@@ -33,7 +33,7 @@
       font-weight: 500;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 10px;
       font-size: 15px;
@@ -54,7 +54,7 @@
     }
 
     button:disabled {
-      background: #999;
+      background: #aaa;
     }
   </style>
 </head>
@@ -70,8 +70,10 @@
   </label>
 
   <label>
-    Sítér neve
-    <input id="resort" placeholder="Pl. St. Anton am Arlberg" />
+    Sítér
+    <select id="resort">
+      <option value="">– válassz síterepet –</option>
+    </select>
   </label>
 
   <label>
@@ -89,31 +91,36 @@
 
 <script type="module">
   import { db } from "../js/config.js";
-  import {
-    ref,
-    push,
-    set
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, push, set } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { skiResorts } from "../js/skiResorts.js";
 
-  // ---- USER ----
   const userId = localStorage.getItem("userId");
-  const userName = localStorage.getItem("userName") || "Felhasználó";
+  const userName = localStorage.getItem("userName") || "Ismeretlen";
 
   if (!userId) {
     alert("Nincs user azonosító");
     location.href = "../index.html";
-    throw new Error("Missing userId");
   }
 
+  const resortSelect = document.getElementById("resort");
   const btn = document.getElementById("createBtn");
+
+  /* SÍTEREPEK BETÖLTÉSE */
+  Object.values(skiResorts).forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.country})`;
+    resortSelect.appendChild(opt);
+  });
 
   btn.onclick = async () => {
     const name = document.getElementById("name").value.trim();
-    const resort = document.getElementById("resort").value.trim();
+    const resortId = resortSelect.value;
     const startAt = document.getElementById("startAt").value;
     const endAt = document.getElementById("endAt").value;
 
-    if (!name || !resort || !startAt || !endAt) {
+    if (!name || !resortId || !startAt || !endAt) {
       alert("Minden mező kitöltése kötelező");
       return;
     }
@@ -125,35 +132,28 @@
 
     btn.disabled = true;
 
-    try {
-      // 1️⃣ ESEMÉNY LÉTREHOZÁSA
-      const eventRef = await push(ref(db, "events"), {
-        name,
-        resortName: resort,
-        startAt,
-        endAt,
-        ownerId: userId,
-        status: "active",
-        createdAt: Date.now()
-      });
+    const eventRef = push(ref(db, "events"));
+    const eventId = eventRef.key;
 
-      const eventId = eventRef.key;
+    await set(eventRef, {
+      name,
+      resortId,
+      ownerId: userId,
+      ownerName: userName,
+      startAt,
+      endAt,
+      status: "active",
+      createdAt: Date.now()
+    });
 
-      // 2️⃣ OWNER AUTOMATIKUS CSATLAKOZTATÁSA (HOST + MEMBER)
-      await set(ref(db, `members/${eventId}/${userId}`), {
-        name: userName,
-        role: "host",
-        joinedAt: Date.now()
-      });
+    // HOST automatikus csatlakoztatása
+    await set(ref(db, `members/${eventId}/${userId}`), {
+      name: userName,
+      role: "host",
+      joinedAt: Date.now()
+    });
 
-      // 3️⃣ VISSZA A FŐOLDALRA
-      location.href = "../index.html";
-
-    } catch (err) {
-      console.error(err);
-      alert("Hiba történt az esemény létrehozásakor");
-      btn.disabled = false;
-    }
+    location.href = "../index.html";
   };
 </script>
 

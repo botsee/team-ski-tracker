@@ -112,6 +112,8 @@
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  import { skiResorts } from "../js/skiResorts.js";
   import { OSMContext } from "../js/osmContext.js";
   import { PisteLayer } from "../js/pisteLayer.js";
   import { StatsEngine } from "../js/statsEngine.js";
@@ -123,18 +125,62 @@
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
 
-  if (!eventId || !userId) location.href = "../index.html";
+  if (!eventId || !userId) {
+    location.href = "../index.html";
+  }
 
-  /* MAP */
-  const map = L.map("map").setView([47.5, 19.04], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18
-  }).addTo(map);
-
-  const markers = {};
+  let map;
   let osm = null;
   let pisteLayer = null;
+  const markers = {};
 
+  /* EVENT */
+  onValue(ref(db, `events/${eventId}`), async snap => {
+    if (!snap.exists()) return;
+
+    const event = snap.val();
+    document.getElementById("eventName").textContent = event.name;
+
+    const resort = skiResorts[event.resortId];
+    if (!resort) {
+      alert("Ismeretlen síterep az eseményhez");
+      return;
+    }
+
+    /* MAP INIT (egyszer) */
+    if (!map) {
+      map = L.map("map").setView(
+        [resort.lat, resort.lng],
+        13
+      );
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18
+      }).addTo(map);
+    }
+
+    /* OSM INIT */
+    if (!osm) {
+      osm = new OSMContext(
+        eventId,
+        { lat: resort.lat, lng: resort.lng },
+        resort.radiusKm
+      );
+      await osm.init();
+    }
+
+    /* PISTE LAYER */
+    if (!pisteLayer) {
+      pisteLayer = new PisteLayer(
+        map,
+        eventId,
+        { lat: resort.lat, lng: resort.lng },
+        resort.radiusKm
+      );
+    }
+  });
+
+  /* MARKER HELPERS */
   function markerColor(state, isOffline) {
     if (isOffline) return "#999";
     if (state === "skiing") return "#2ecc71";
@@ -170,22 +216,6 @@
     }
   }
 
-  /* EVENT INIT */
-  onValue(ref(db, `events/${eventId}`), async snap => {
-    if (!snap.exists()) return;
-
-    document.getElementById("eventName").textContent = snap.val().name;
-
-    if (!osm) {
-      osm = new OSMContext(eventId, { lat: 47.5, lng: 19.04 }, 5);
-      await osm.init();
-    }
-
-    if (!pisteLayer) {
-      pisteLayer = new PisteLayer(map, eventId, { lat: 47.5, lng: 19.04 }, 5);
-    }
-  });
-
   /* MEMBERS */
   onValue(ref(db, `members/${eventId}`), snap => {
     const list = document.getElementById("members");
@@ -195,8 +225,11 @@
     const members = snap.val() || {};
 
     Object.entries(members).forEach(([id, m]) => {
-      const autoOffline = m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
-      const isOffline = m.manualState === "offline" || autoOffline;
+      const autoOffline =
+        m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
+      const isOffline =
+        m.manualState === "offline" || autoOffline;
+
       const state = m.activityState || "rest";
 
       let ctxName = "";
@@ -210,6 +243,7 @@
         state === "skiing" ? `🟢 Csúszik${ctxName}` :
         `🟡 Pihen${ctxName}`;
 
+      /* STAT – csak saját user */
       if (id === userId && m.lat && m.lng) {
         stats.addPoint({
           lat: m.lat,
