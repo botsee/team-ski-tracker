@@ -50,33 +50,85 @@
       font-size: 14px;
     }
 
+    .menu-btn:hover {
+      background: rgba(255,255,255,0.22);
+    }
+
     .section {
       margin-top: 18px;
     }
 
-    .member {
+    /* STAT BLOKK */
+    .stats {
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px 0 14px;
+      font-size: 13px;
+    }
+
+    .stats-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .stat-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-size: 14px;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding: 3px 0;
+      opacity: 0.95;
+    }
+
+    /* TAG KÁRTYÁK */
+    .member {
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
       cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
     }
 
     .member:hover {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.2);
     }
 
-    .left {
+    .member.offline {
+      opacity: 0.55;
+    }
+
+    .member-header {
       display: flex;
-      gap: 6px;
+      justify-content: space-between;
       align-items: center;
     }
 
+    .member-name {
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      background: rgba(0,0,0,0.25);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .member-state {
+      font-size: 13px;
+      margin-top: 4px;
+      opacity: 0.95;
+    }
+
     .time {
-      font-size: 12px;
-      opacity: 0.8;
+      font-size: 11px;
+      opacity: 0.75;
+      margin-top: 2px;
     }
 
     #map {
@@ -91,6 +143,16 @@
 
   <div id="sidebar">
     <h2 id="eventName">Esemény</h2>
+
+    <!-- STAT BLOKK -->
+    <div class="stats">
+      <div class="stats-title">📊 Statisztika</div>
+      <div class="stat-row"><span>⏱️ Esemény ideje</span><span>—</span></div>
+      <div class="stat-row"><span>🟢 Csúszás</span><span>—</span></div>
+      <div class="stat-row"><span>🔵 Felvonó</span><span>—</span></div>
+      <div class="stat-row"><span>🟡 Pihenő</span><span>—</span></div>
+      <div class="stat-row"><span>📏 Megtett km</span><span>—</span></div>
+    </div>
 
     <button class="menu-btn" onclick="goHome()">⬅️ Vissza</button>
 
@@ -129,7 +191,6 @@
     location.href = "../index.html";
   }
 
-  /* MAP – nincs fix kezdőpont */
   const map = L.map("map");
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
@@ -178,12 +239,10 @@
     }
   }
 
-  /* EVENT */
   let osm = null;
 
   onValue(ref(db, `events/${eventId}`), async snap => {
     if (!snap.exists()) return;
-
     const event = snap.val();
     document.getElementById("eventName").textContent = event.name;
 
@@ -197,7 +256,6 @@
     }
   });
 
-  /* GPS – EZ A KULCS */
   navigator.geolocation.watchPosition(
     pos => {
       const lat = pos.coords.latitude;
@@ -224,14 +282,9 @@
       });
     },
     err => console.warn("GPS hiba", err),
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 10000
-    }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
   );
 
-  /* MEMBERS */
   onValue(ref(db, `members/${eventId}`), snap => {
     const list = document.getElementById("members");
     list.innerHTML = "";
@@ -255,7 +308,7 @@
         if (ctx?.name) ctxName = ` – ${ctx.name}`;
       }
 
-      const label =
+      const stateLabel =
         isOffline
           ? "⚪ Offline"
           : state === "skiing"
@@ -264,29 +317,31 @@
           ? `🔵 Felvonón${ctxName}`
           : `🟡 Pihen${ctxName}`;
 
-      const icon =
-        isOffline ? "⚪" :
-        state === "skiing" ? "🟢" :
-        state === "lift" ? "🔵" :
-        "🟡";
-
       const div = document.createElement("div");
-      div.className = "member";
+      div.className = "member" + (isOffline ? " offline" : "");
       div.innerHTML = `
-        <div class="left">${icon} ${m.name || "?"}</div>
-        <div class="time">${timeAgo(m.lastUpdate)}</div>
+        <div class="member-header">
+          <div class="member-name">
+            ${m.name || "?"}
+            ${id === userId ? '<span class="badge">Te</span>' : ''}
+          </div>
+        </div>
+        <div class="member-state">${stateLabel}</div>
+        <div class="time">Utoljára: ${timeAgo(m.lastUpdate)}</div>
       `;
+
       div.onclick = () => {
         map.setView([m.lat, m.lng], 16, { animate: true });
         markers[id]?.openPopup();
       };
+
       list.appendChild(div);
 
       updateMarker(
         id,
         m.lat,
         m.lng,
-        `<strong>${m.name}</strong><br>${label}`,
+        `<strong>${m.name}</strong><br>${stateLabel}`,
         state,
         isOffline
       );
@@ -294,14 +349,13 @@
   });
 
   function timeAgo(ts) {
-    if (!ts) return "";
+    if (!ts) return "—";
     const min = Math.floor((Date.now() - ts) / 60000);
     if (min < 1) return "most";
     if (min === 1) return "1 perce";
     return `${min} perce`;
   }
 
-  /* ACTIONS */
   window.goHome = () => location.href = "../index.html";
 
   window.setState = state =>
