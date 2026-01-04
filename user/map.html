@@ -38,16 +38,27 @@
       font-family:system-ui,-apple-system,"Inter",sans-serif;
     }
 
-    #app{position:relative;width:100vw;height:100vh;overflow:hidden}
+    #app{
+      position:relative;
+      width:100vw;
+      height:100vh;
+      overflow:hidden;
+    }
 
-    #map{position:absolute;inset:0;z-index:0}
-    #map::after{
-      content:"";
+    /* MAP */
+    #map{
       position:absolute;
       inset:0;
-      background:rgba(0,0,0,.2);
-      pointer-events:none;
       z-index:1;
+    }
+
+    /* SAFE OVERLAY (NO LEAFLET CONFLICT) */
+    #mapOverlay{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.15);
+      pointer-events:none;
+      z-index:2;
     }
 
     /* SIDEBAR */
@@ -119,9 +130,8 @@
       transition:background .15s, transform .1s;
     }
 
-    .btn:active{transform:scale(.97)}
     .btn:hover{background:rgba(255,255,255,.14)}
-
+    .btn:active{transform:scale(.97)}
     .btn.green{background:rgba(46,204,113,.2)}
     .btn.blue{background:rgba(52,152,219,.2)}
     .btn.yellow{background:rgba(241,196,15,.2)}
@@ -170,7 +180,11 @@
       border-radius:8px;
     }
 
-    .member-state{font-size:11px;margin-top:4px;color:var(--muted)}
+    .member-state{
+      font-size:11px;
+      margin-top:4px;
+      color:var(--muted);
+    }
 
     .stats{
       background:rgba(255,255,255,.06);
@@ -187,7 +201,7 @@
       color:var(--muted);
     }
 
-    /* BOTTOM ICON ROW */
+    /* BOTTOM ICONS */
     .bottom-actions{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -243,6 +257,7 @@
 <body>
 <div id="app">
   <div id="map"></div>
+  <div id="mapOverlay"></div>
 
   <div id="sidebar">
 
@@ -286,7 +301,7 @@
     <h3>Csatlakozás</h3>
     <div id="qr"></div>
     <div id="joinLink" style="font-size:12px;color:var(--muted)"></div>
-    <button class="btn" style="margin-top:10px" onclick="copyJoin()">Link másolása</button>
+    <button class="btn" onclick="copyJoin()">Link másolása</button>
     <button class="btn" style="margin-top:6px" onclick="closeJoin()">Bezárás</button>
   </div>
 </div>
@@ -311,59 +326,50 @@
   const userName=localStorage.getItem("userName")||"Ismeretlen";
   if(!eventId||!userId)location.href="../index.html";
 
-  let isOwner=false, joinLink="";
+  const map=L.map("map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
 
-  const fmt=ms=>{
-    const m=Math.floor(ms/60000),h=Math.floor(m/60);
-    return`${h}:${(m%60).toString().padStart(2,"0")}`;
-  };
+  let firstFix=true;
 
-  onValue(ref(db,`events/${eventId}`),s=>{
-    if(!s.exists())return;
-    const e=s.val();
-    isOwner=e.ownerId===userId;
-    if(isOwner){
-      joinBtn.style.display="block";
-      statBtn.style.display="block";
-      joinLink=`${location.origin}/user/map.html?eventId=${eventId}`;
-    }
-    if(e.createdAt){
-      setInterval(()=>eventDuration.textContent=fmt(Date.now()-e.createdAt),60000);
+  navigator.geolocation.watchPosition(pos=>{
+    const {latitude,longitude}=pos.coords;
+    if(firstFix){
+      map.setView([latitude,longitude],15,{animate:true});
+      firstFix=false;
     }
   });
 
-  onValue(ref(db,`members/${eventId}`),s=>{
-    members.innerHTML="";
-    const data=s.val()||{};
-    Object.values(data).forEach(m=>{
-      const div=document.createElement("div");
-      div.className="member";
-      div.innerHTML=`<div class="member-name">${m.name||"?"}${m.name===userName?'<span class="badge">Te</span>':''}</div>
-                     <div class="member-state">${m.activityState||"—"}</div>`;
-      members.appendChild(div);
+  window.setState=state=>{
+    update(ref(db,`members/${eventId}/${userId}`),{
+      name:userName,
+      activityState:state,
+      lastUpdate:Date.now()
     });
-  });
-
-  window.setState=s=>update(ref(db,`members/${eventId}/${userId}`),{
-    activityState:s,lastUpdate:Date.now()
-  });
+  };
 
   window.goHome=()=>location.href="../index.html";
 
   window.openJoin=()=>{
-    joinLink&&(
-      qr.innerHTML="",
-      new QRCode(qr,{text:joinLink,width:180,height:180,colorDark:"#fff",colorLight:"transparent"}),
-      joinModal.style.display="flex",
-      joinLinkEl.textContent=joinLink
-    );
+    qr.innerHTML="";
+    const link=`${location.origin}/user/map.html?eventId=${eventId}`;
+    joinLink.textContent=link;
+    new QRCode(qr,{text:link,width:180,height:180,colorDark:"#fff",colorLight:"transparent"});
+    joinModal.style.display="flex";
   };
 
   window.closeJoin=()=>joinModal.style.display="none";
-  window.copyJoin=()=>{navigator.clipboard.writeText(joinLink);alert("Link másolva");};
+  window.copyJoin=()=>{navigator.clipboard.writeText(joinLink.textContent);alert("Link másolva");};
 
   window.openStat=()=>statModal.style.display="flex";
   window.closeStat=()=>statModal.style.display="none";
+
+  onValue(ref(db,`events/${eventId}`),s=>{
+    if(!s.exists())return;
+    if(s.val().ownerId===userId){
+      joinBtn.style.display="block";
+      statBtn.style.display="block";
+    }
+  });
 </script>
 </body>
 </html>
