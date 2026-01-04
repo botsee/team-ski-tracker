@@ -13,8 +13,16 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body { margin: 0; font-family: system-ui, sans-serif; }
-    #app { display: flex; height: 100vh; width: 100vw; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
 
     #sidebar {
       width: 300px;
@@ -25,7 +33,9 @@
       overflow-y: auto;
     }
 
-    #sidebar h2 { margin-top: 0; }
+    #sidebar h2 {
+      margin-top: 0;
+    }
 
     .menu-btn {
       width: 100%;
@@ -37,9 +47,12 @@
       border-radius: 6px;
       cursor: pointer;
       text-align: left;
+      font-size: 14px;
     }
 
-    .section { margin-top: 18px; }
+    .section {
+      margin-top: 18px;
+    }
 
     .member {
       display: flex;
@@ -66,7 +79,9 @@
       opacity: 0.8;
     }
 
-    #map { flex: 1; }
+    #map {
+      flex: 1;
+    }
   </style>
 </head>
 
@@ -74,7 +89,6 @@
 
 <div id="app">
 
-  <!-- SIDEBAR -->
   <div id="sidebar">
     <h2 id="eventName">Esemény</h2>
 
@@ -83,18 +97,9 @@
     <div class="section">
       <strong>Saját állapot</strong>
       <button class="menu-btn" onclick="setState('skiing')">🟢 Csúszok</button>
+      <button class="menu-btn" onclick="setState('lift')">🔵 Felvonón</button>
       <button class="menu-btn" onclick="setState('rest')">🟡 Pihen / Hütte</button>
       <button class="menu-btn" onclick="setState('offline')">⚪ Offline</button>
-    </div>
-
-    <div class="section">
-      <strong>Stat</strong>
-      <div id="stats">–</div>
-    </div>
-
-    <div class="section">
-      <strong>Térkép</strong>
-      <button class="menu-btn" onclick="togglePistes()">🎿 Pályák</button>
     </div>
 
     <div class="section">
@@ -103,7 +108,6 @@
     </div>
   </div>
 
-  <!-- MAP -->
   <div id="map"></div>
 
 </div>
@@ -112,78 +116,33 @@
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-  import { skiResorts } from "../js/skiResorts.js";
   import { OSMContext } from "../js/osmContext.js";
-  import { PisteLayer } from "../js/pisteLayer.js";
-  import { StatsEngine } from "../js/statsEngine.js";
 
   const OFFLINE_TIMEOUT = 15 * 60 * 1000;
-  const stats = new StatsEngine();
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userName") || "Ismeretlen";
 
   if (!eventId || !userId) {
     location.href = "../index.html";
   }
 
-  let map;
-  let osm = null;
-  let pisteLayer = null;
+  /* MAP – nincs fix kezdőpont */
+  const map = L.map("map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18
+  }).addTo(map);
+
+  let firstFix = true;
+  let selfMarker = null;
   const markers = {};
 
-  /* EVENT */
-  onValue(ref(db, `events/${eventId}`), async snap => {
-    if (!snap.exists()) return;
-
-    const event = snap.val();
-    document.getElementById("eventName").textContent = event.name;
-
-    const resort = skiResorts[event.resortId];
-    if (!resort) {
-      alert("Ismeretlen síterep az eseményhez");
-      return;
-    }
-
-    /* MAP INIT (egyszer) */
-    if (!map) {
-      map = L.map("map").setView(
-        [resort.lat, resort.lng],
-        13
-      );
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18
-      }).addTo(map);
-    }
-
-    /* OSM INIT */
-    if (!osm) {
-      osm = new OSMContext(
-        eventId,
-        { lat: resort.lat, lng: resort.lng },
-        resort.radiusKm
-      );
-      await osm.init();
-    }
-
-    /* PISTE LAYER */
-    if (!pisteLayer) {
-      pisteLayer = new PisteLayer(
-        map,
-        eventId,
-        { lat: resort.lat, lng: resort.lng },
-        resort.radiusKm
-      );
-    }
-  });
-
-  /* MARKER HELPERS */
   function markerColor(state, isOffline) {
     if (isOffline) return "#999";
     if (state === "skiing") return "#2ecc71";
+    if (state === "lift") return "#3498db";
     if (state === "rest") return "#f1c40f";
     return "#1f6f8b";
   }
@@ -192,10 +151,13 @@
     return L.divIcon({
       className: "marker",
       html: `<div style="
-        width:14px;height:14px;border-radius:50%;
+        width:14px;
+        height:14px;
+        border-radius:50%;
         background:${markerColor(state, isOffline)};
         opacity:${isOffline ? 0.5 : 1};
-        border:2px solid white;"></div>`,
+        border:2px solid white;
+      "></div>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
@@ -216,6 +178,59 @@
     }
   }
 
+  /* EVENT */
+  let osm = null;
+
+  onValue(ref(db, `events/${eventId}`), async snap => {
+    if (!snap.exists()) return;
+
+    const event = snap.val();
+    document.getElementById("eventName").textContent = event.name;
+
+    if (!osm && event.resortCenter) {
+      osm = new OSMContext(
+        eventId,
+        event.resortCenter,
+        event.resortRadiusKm || 5
+      );
+      await osm.init();
+    }
+  });
+
+  /* GPS – EZ A KULCS */
+  navigator.geolocation.watchPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      if (firstFix) {
+        map.setView([lat, lng], 15, { animate: true });
+        firstFix = false;
+      }
+
+      if (!selfMarker) {
+        selfMarker = L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup("Te itt vagy");
+      } else {
+        selfMarker.setLatLng([lat, lng]);
+      }
+
+      update(ref(db, `members/${eventId}/${userId}`), {
+        name: userName,
+        lat,
+        lng,
+        lastUpdate: Date.now()
+      });
+    },
+    err => console.warn("GPS hiba", err),
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    }
+  );
+
   /* MEMBERS */
   onValue(ref(db, `members/${eventId}`), snap => {
     const list = document.getElementById("members");
@@ -225,6 +240,8 @@
     const members = snap.val() || {};
 
     Object.entries(members).forEach(([id, m]) => {
+      if (!m.lat || !m.lng) return;
+
       const autoOffline =
         m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
       const isOffline =
@@ -233,60 +250,48 @@
       const state = m.activityState || "rest";
 
       let ctxName = "";
-      if (!isOffline && osm && m.lat && m.lng) {
+      if (!isOffline && osm) {
         const ctx = osm.getContext(m.lat, m.lng, state);
         if (ctx?.name) ctxName = ` – ${ctx.name}`;
       }
 
       const label =
-        isOffline ? "⚪ Offline" :
-        state === "skiing" ? `🟢 Csúszik${ctxName}` :
-        `🟡 Pihen${ctxName}`;
+        isOffline
+          ? "⚪ Offline"
+          : state === "skiing"
+          ? `🟢 Csúszik${ctxName}`
+          : state === "lift"
+          ? `🔵 Felvonón${ctxName}`
+          : `🟡 Pihen${ctxName}`;
 
-      /* STAT – csak saját user */
-      if (id === userId && m.lat && m.lng) {
-        stats.addPoint({
-          lat: m.lat,
-          lng: m.lng,
-          ts: Date.now(),
-          state
-        });
-        renderStats();
-      }
+      const icon =
+        isOffline ? "⚪" :
+        state === "skiing" ? "🟢" :
+        state === "lift" ? "🔵" :
+        "🟡";
 
       const div = document.createElement("div");
       div.className = "member";
       div.innerHTML = `
-        <div class="left">${label.split(" ")[0]} ${m.name || "?"}</div>
-        <div class="time">${isOffline ? "offline" : timeAgo(m.lastUpdate)}</div>
+        <div class="left">${icon} ${m.name || "?"}</div>
+        <div class="time">${timeAgo(m.lastUpdate)}</div>
       `;
       div.onclick = () => {
-        if (m.lat && m.lng) {
-          map.setView([m.lat, m.lng], 16, { animate: true });
-          markers[id]?.openPopup();
-        }
+        map.setView([m.lat, m.lng], 16, { animate: true });
+        markers[id]?.openPopup();
       };
       list.appendChild(div);
 
-      if (m.lat && m.lng) {
-        updateMarker(
-          id,
-          m.lat,
-          m.lng,
-          `<strong>${m.name}</strong><br>${label}`,
-          state,
-          isOffline
-        );
-      }
+      updateMarker(
+        id,
+        m.lat,
+        m.lng,
+        `<strong>${m.name}</strong><br>${label}`,
+        state,
+        isOffline
+      );
     });
   });
-
-  function renderStats() {
-    const s = stats.getStats();
-    document.getElementById("stats").innerHTML =
-      `🛷 Távolság: <strong>${s.distanceKm} km</strong><br>` +
-      `☕ Pihenő: ${s.restTimeMin} perc`;
-  }
 
   function timeAgo(ts) {
     if (!ts) return "";
@@ -305,10 +310,6 @@
       manualState: state === "offline" ? "offline" : null,
       lastUpdate: Date.now()
     });
-
-  window.togglePistes = async () => {
-    if (pisteLayer) await pisteLayer.toggle();
-  };
 </script>
 
 </body>
