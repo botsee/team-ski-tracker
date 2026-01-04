@@ -15,22 +15,35 @@
     header {
       background: #1f6f8b;
       color: white;
-      padding: 16px;
-      font-size: 20px;
-      font-weight: 600;
+      padding: 14px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+    }
+
+    header .left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     header button {
       background: white;
       color: #1f6f8b;
       border: none;
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
+    }
+
+    #userLabel {
+      cursor: pointer;
+      opacity: 0.95;
+    }
+
+    #userLabel:hover {
+      text-decoration: underline;
     }
 
     main {
@@ -40,11 +53,8 @@
     }
 
     h2 {
-      margin-top: 32px;
+      margin-top: 24px;
       font-size: 18px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
 
     .event {
@@ -58,39 +68,60 @@
       align-items: center;
     }
 
-    .info h3 {
-      margin: 0 0 4px;
-      font-size: 16px;
-    }
-
-    .meta {
-      font-size: 14px;
-      color: #555;
-    }
-
     .badge {
       font-size: 12px;
       padding: 4px 8px;
       border-radius: 999px;
       margin-left: 6px;
-      white-space: nowrap;
       color: white;
     }
 
     .host { background: #1f6f8b; }
     .member { background: #2ecc71; }
 
-    .actions button {
-      margin-left: 8px;
-      padding: 6px 10px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
     .empty {
       font-size: 14px;
       color: #777;
       margin-top: 8px;
+    }
+
+    /* ---- MODAL ---- */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 320px;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      margin-top: 10px;
+      box-sizing: border-box;
+    }
+
+    .modal-content button {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -98,65 +129,88 @@
 <body>
 
 <header>
-  Team Ski Tracker
+  <div class="left">
+    <strong>Team Ski Tracker</strong>
+    <span id="userLabel"></span>
+  </div>
+  <button onclick="location.href='./admin/create.html'">➕ Új esemény</button>
 </header>
 
 <main>
-
   <h2>🟦 Saját eseményeim</h2>
-  <button onclick="location.href='./admin/create.html'">➕ Új esemény</button>
   <div id="owned"></div>
 
   <h2>🟩 Események, amikhez csatlakoztam</h2>
   <div id="joined"></div>
-
 </main>
 
+<!-- NÉV MODAL -->
+<div id="nameModal" class="modal">
+  <div class="modal-content">
+    <h3>Név megadása</h3>
+    <input id="nameInput" placeholder="Pl. Balázs" />
+    <button onclick="saveName()">Mentés</button>
+  </div>
+</div>
+
 <script type="module">
-  // -------- USER INIT (KÖTELEZŐ) --------
-  let userId = localStorage.getItem("userId");
+  import { db } from "./js/config.js";
+  import { ref, onValue } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  // ---- USER ----
+  const userId = localStorage.getItem("userId");
+  if (!userId) {
+    alert("Nincs user azonosító");
+    throw new Error("Missing userId");
+  }
+
+  // ---- NÉV KEZELÉS ----
+  const userLabel = document.getElementById("userLabel");
+  const modal = document.getElementById("nameModal");
+  const input = document.getElementById("nameInput");
+
   let userName = localStorage.getItem("userName");
 
-  if (!userId) {
-    userId = crypto.randomUUID();
-    localStorage.setItem("userId", userId);
-  }
-
   if (!userName) {
-    userName = "Felhasználó";
-    localStorage.setItem("userName", userName);
+    openNameEditor();
+  } else {
+    userLabel.textContent = "👤 " + userName + " ✏️";
   }
 
-  // -------- FIREBASE --------
-  import { db } from "./js/config.js";
-  import {
-    ref,
-    onValue
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  window.openNameEditor = () => {
+    input.value = localStorage.getItem("userName") || "";
+    modal.style.display = "flex";
+  };
 
+  window.saveName = () => {
+    const val = input.value.trim();
+    if (!val) return;
+    localStorage.setItem("userName", val);
+    modal.style.display = "none";
+    userLabel.textContent = "👤 " + val + " ✏️";
+  };
+
+  userLabel.onclick = openNameEditor;
+
+  // ---- ESEMÉNYEK ----
   const ownedEl = document.getElementById("owned");
   const joinedEl = document.getElementById("joined");
 
   let events = {};
   let memberships = {};
 
-  // -------- ESEMÉNYEK --------
   onValue(ref(db, "events"), snap => {
     events = snap.val() || {};
     render();
   });
 
-  // -------- TAGSÁGOK --------
   onValue(ref(db, "members"), snap => {
     const all = snap.val() || {};
     memberships = {};
-
-    Object.entries(all).forEach(([eventId, members]) => {
-      if (members[userId]) {
-        memberships[eventId] = true;
-      }
+    Object.entries(all).forEach(([eid, m]) => {
+      if (m[userId]) memberships[eid] = true;
     });
-
     render();
   });
 
@@ -177,20 +231,16 @@
       div.className = "event";
 
       div.innerHTML = `
-        <div class="info">
-          <h3>
-            ${e.name}
-            ${
-              isOwner
-                ? `<span class="badge host">HOST</span>`
-                : `<span class="badge member">MEMBER</span>`
-            }
-          </h3>
-          <div class="meta">${e.resortName || ""}</div>
+        <div>
+          <strong>${e.name}</strong>
+          ${
+            isOwner
+              ? `<span class="badge host">HOST</span>`
+              : `<span class="badge member">MEMBER</span>`
+          }
+          <div style="font-size:14px;color:#555">${e.resortName || ""}</div>
         </div>
-        <div class="actions">
-          <button onclick="openEvent('${id}')">Megnyitás</button>
-        </div>
+        <button onclick="openEvent('${id}')">Megnyitás</button>
       `;
 
       if (isOwner) {
@@ -202,13 +252,8 @@
       }
     });
 
-    if (!hasOwned) {
-      ownedEl.innerHTML += `<div class="empty">Nincs saját eseményed</div>`;
-    }
-
-    if (!hasJoined) {
-      joinedEl.innerHTML += `<div class="empty">Még nem csatlakoztál eseményhez</div>`;
-    }
+    if (!hasOwned) ownedEl.innerHTML = `<div class="empty">Nincs saját eseményed</div>`;
+    if (!hasJoined) joinedEl.innerHTML = `<div class="empty">Még nem csatlakoztál eseményhez</div>`;
   }
 
   window.openEvent = id => {
