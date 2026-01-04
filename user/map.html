@@ -52,7 +52,6 @@
       z-index:1;
     }
 
-    /* SAFE OVERLAY (NO LEAFLET CONFLICT) */
     #mapOverlay{
       position:absolute;
       inset:0;
@@ -201,7 +200,6 @@
       color:var(--muted);
     }
 
-    /* BOTTOM ICONS */
     .bottom-actions{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -222,7 +220,6 @@
     .icon-btn:hover{background:rgba(255,255,255,.15)}
     .icon-btn:active{transform:scale(.95)}
 
-    /* MODALS */
     .modal{
       position:fixed;
       inset:0;
@@ -295,7 +292,6 @@
   </div>
 </div>
 
-<!-- JOIN MODAL -->
 <div class="modal" id="joinModal">
   <div class="modal-content">
     <h3>Csatlakozás</h3>
@@ -306,7 +302,6 @@
   </div>
 </div>
 
-<!-- STAT MODAL -->
 <div class="modal" id="statModal">
   <div class="modal-content">
     <h3>Tag statisztikák</h3>
@@ -326,50 +321,104 @@
   const userName=localStorage.getItem("userName")||"Ismeretlen";
   if(!eventId||!userId)location.href="../index.html";
 
+  /* ================= MAP INIT ================= */
   const map=L.map("map");
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
 
   let firstFix=true;
+  let selfMarker=null;
+  const markers={};
 
+  /* ================= MARKER HELPERS ================= */
+  function markerColor(state, offline){
+    if(offline) return "#777";
+    if(state==="skiing") return "#2ecc71";
+    if(state==="lift") return "#3498db";
+    if(state==="rest") return "#f1c40f";
+    return "#ffffff";
+  }
+
+  function markerIcon(state, offline){
+    return L.divIcon({
+      className:"",
+      html:`<div style="width:14px;height:14px;border-radius:50%;
+        background:${markerColor(state,offline)};
+        border:2px solid white;
+        opacity:${offline?0.5:1};"></div>`,
+      iconSize:[14,14],
+      iconAnchor:[7,7]
+    });
+  }
+
+  function updateMarker(id,lat,lng,label,state,offline){
+    if(markers[id]){
+      markers[id].setLatLng([lat,lng])
+        .setIcon(markerIcon(state,offline))
+        .setPopupContent(label);
+    }else{
+      markers[id]=L.marker([lat,lng],{
+        icon:markerIcon(state,offline)
+      }).addTo(map).bindPopup(label);
+    }
+  }
+
+  /* ================= GPS ================= */
   navigator.geolocation.watchPosition(pos=>{
     const {latitude,longitude}=pos.coords;
+    const now=Date.now();
+
     if(firstFix){
       map.setView([latitude,longitude],15,{animate:true});
       firstFix=false;
     }
-  });
 
-  window.setState=state=>{
+    if(!selfMarker){
+      selfMarker=L.marker([latitude,longitude]).addTo(map).bindPopup("Te itt vagy");
+    }else{
+      selfMarker.setLatLng([latitude,longitude]);
+    }
+
     update(ref(db,`members/${eventId}/${userId}`),{
       name:userName,
+      lat:latitude,
+      lng:longitude,
+      lastUpdate:now
+    });
+  });
+
+  /* ================= MEMBERS + MARKERS ================= */
+  const OFFLINE_TIMEOUT=15*60*1000;
+
+  onValue(ref(db,`members/${eventId}`),snap=>{
+    const data=snap.val()||{};
+    const now=Date.now();
+    Object.entries(data).forEach(([id,m])=>{
+      if(!m.lat||!m.lng) return;
+      const offline=
+        m.manualState==="offline"||
+        (m.lastUpdate&&now-m.lastUpdate>OFFLINE_TIMEOUT);
+      const state=m.activityState||"rest";
+      updateMarker(
+        id,
+        m.lat,
+        m.lng,
+        `<strong>${m.name||"?"}</strong>`,
+        state,
+        offline
+      );
+    });
+  });
+
+  /* ================= STATE ================= */
+  window.setState=state=>{
+    update(ref(db,`members/${eventId}/${userId}`),{
       activityState:state,
+      manualState:state==="offline"?"offline":null,
       lastUpdate:Date.now()
     });
   };
 
   window.goHome=()=>location.href="../index.html";
-
-  window.openJoin=()=>{
-    qr.innerHTML="";
-    const link=`${location.origin}/user/map.html?eventId=${eventId}`;
-    joinLink.textContent=link;
-    new QRCode(qr,{text:link,width:180,height:180,colorDark:"#fff",colorLight:"transparent"});
-    joinModal.style.display="flex";
-  };
-
-  window.closeJoin=()=>joinModal.style.display="none";
-  window.copyJoin=()=>{navigator.clipboard.writeText(joinLink.textContent);alert("Link másolva");};
-
-  window.openStat=()=>statModal.style.display="flex";
-  window.closeStat=()=>statModal.style.display="none";
-
-  onValue(ref(db,`events/${eventId}`),s=>{
-    if(!s.exists())return;
-    if(s.val().ownerId===userId){
-      joinBtn.style.display="block";
-      statBtn.style.display="block";
-    }
-  });
 </script>
 </body>
 </html>
