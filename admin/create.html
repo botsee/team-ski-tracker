@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin – Esemény létrehozás</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+    }
+
+    header {
+      background: #1f6f8b;
+      color: white;
+      padding: 16px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    main {
+      padding: 16px;
+      max-width: 500px;
+      margin: auto;
+    }
+
+    label {
+      display: block;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #1f6f8b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>Esemény létrehozása</header>
+
+<main>
+  <label>
+    Esemény neve
+    <input id="name" placeholder="Pl. Hétvégi síelés" />
+  </label>
+
+  <label>
+    Sítér neve
+    <input id="resort" placeholder="Pl. St. Anton am Arlberg" />
+    <div class="hint">Pontosan úgy írd, ahogy a térképen szerepel</div>
+  </label>
+
+  <label>
+    Kezdés
+    <input id="startAt" type="datetime-local" />
+  </label>
+
+  <label>
+    Befejezés
+    <input id="endAt" type="datetime-local" />
+  </label>
+
+  <button id="createBtn">Esemény létrehozása</button>
+</main>
+
+<script type="module">
+  import { db } from "../js/config.js";
+  import {
+    ref,
+    push
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const btn = document.getElementById("createBtn");
+
+  btn.onclick = async () => {
+    const name = document.getElementById("name").value.trim();
+    const resort = document.getElementById("resort").value.trim();
+    const startAt = document.getElementById("startAt").value;
+    const endAt = document.getElementById("endAt").value;
+
+    if (!name || !resort || !startAt || !endAt) {
+      alert("Minden mező kitöltése kötelező");
+      return;
+    }
+
+    if (startAt >= endAt) {
+      alert("A befejezés nem lehet korábbi, mint a kezdés");
+      return;
+    }
+
+    btn.disabled = true;
+
+    await push(ref(db, "events"), {
+      name,
+      resortName: resort,
+      startAt,
+      endAt,
+      status: "active",
+      createdAt: Date.now()
+    });
+
+    location.href = "./index.html";
+  };
+</script>
+
+</body>
+</html>

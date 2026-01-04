@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Ski Tracker – Térkép</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #000;
+    }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    .status {
+      position: absolute;
+      bottom: 92px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 1000;
+      pointer-events: none;
+      text-align: center;
+      max-width: 90%;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .controls button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.95);
+      white-space: nowrap;
+    }
+
+    .controls button.primary {
+      background: #1f6f8b;
+      color: white;
+    }
+
+    .controls button.danger {
+      background: #444;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div class="status" id="status">Pozíció meghatározása…</div>
+
+<div class="controls">
+  <button id="restBtn">☕ Pihenés / Hütte</button>
+  <button id="offlineBtn" class="danger">🚫 Offline</button>
+  <button id="autoBtn" class="primary">▶️ Kezdjük</button>
+</div>
+
+<script type="module">
+  import { db } from "../js/config.js";
+  import {
+    ref,
+    onValue,
+    update
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  import { ActivityEngine } from "../js/activityEngine.js";
+  import {
+    ActivityStateMachine,
+    StateTypes
+  } from "../js/stateMachine.js";
+  import { OSMContext } from "../js/osmContext.js";
+
+  // -------- URL PARAM --------
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get("eventId");
+
+  if (!eventId) {
+    alert("Hiányzó eseményazonosító");
+    throw new Error("Missing eventId");
+  }
+
+  const userId = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userName") || "Ismeretlen";
+
+  if (!userId) {
+    alert("Nincs user azonosító");
+    throw new Error("Missing userId");
+  }
+
+  const statusEl = document.getElementById("status");
+  const restBtn = document.getElementById("restBtn");
+  const offlineBtn = document.getElementById("offlineBtn");
+  const autoBtn = document.getElementById("autoBtn");
+
+  // -------- TÉRKÉP --------
+  const map = L.map("map").setView([47.4979, 19.0402], 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: "© OpenStreetMap"
+  }).addTo(map);
+
+  // -------- MARKEREK --------
+  const markers = {};
+
+  function updateMarker(id, lat, lng, label) {
+    if (markers[id]) {
+      markers[id].setLatLng([lat, lng]).setPopupContent(label);
+    } else {
+      markers[id] = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(label);
+    }
+  }
+
+  // -------- OSM INIT (cache-elve) --------
+  const osm = new OSMContext(
+    eventId,
+    { lat: 47.4979, lng: 19.0402 }, // később event location
+    6
+  );
+
+  statusEl.textContent = "Sípálya adatok betöltése…";
+  await osm.init();
+
+  // -------- ACTIVITY + STATE --------
+  const activityEngine = new ActivityEngine();
+
+  const stateMachine = new ActivityStateMachine(state => {
+    let text = "Automatikus követés aktív";
+
+    if (
+      state.state === StateTypes.MANUAL_REST ||
+      state.state === StateTypes.MANUAL_HUT
+    ) {
+      text = "Pihenés mód – automatikus visszatérés 15 perc múlva";
+    }
+
+    if (state.state === StateTypes.MANUAL_OFFLINE) {
+      text = "Offline mód – nem osztasz meg pozíciót";
+    }
+
+    statusEl.textContent = text;
+
+    update(ref(db, `members/${eventId}/${userId}`), {
+      trackingState: state.state,
+      manualUntil: state.manualUntil || null
+    });
+  });
+
+  // -------- UI ESEMÉNYEK --------
+  restBtn.onclick = () => stateMachine.setManualRest();
+  offlineBtn.onclick = () => stateMachine.setManualOffline();
+  autoBtn.onclick = () => stateMachine.startAutomatic();
+
+  // -------- TAGOK FIGYELÉSE --------
+  const membersRef = ref(db, `members/${eventId}`);
+
+  onValue(membersRef, snap => {
+    const members = snap.val() || {};
+    const bounds = [];
+
+    Object.entries(members).forEach(([id, m]) => {
+      if (!m.lat || !m.lng) return;
+      const label = `${m.name || "?"}<br>${m.activity || ""}`;
+      updateMarker(id, m.lat, m.lng, label);
+      bounds.push([m.lat, m.lng]);
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  });
+
+  // -------- GPS --------
+  function sendPosition(pos) {
+    if (stateMachine.getState() === StateTypes.MANUAL_OFFLINE) return;
+
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const speedKmh = (pos.coords.speed || 0) * 3.6;
+
+    activityEngine.addPoint({
+      lat,
+      lng,
+      speed: speedKmh,
+      altitude: pos.coords.altitude,
+      timestamp: Date.now()
+    });
+
+    stateMachine.onMovementDetected(speedKmh);
+
+    let baseActivity = "rest";
+
+    if (stateMachine.isAutomatic()) {
+      const detected = activityEngine.detectActivity();
+      if (detected) baseActivity = detected;
+    }
+
+    const ctx = osm.getContext(lat, lng, baseActivity);
+
+    let label = "Pihen";
+    if (baseActivity === "skiing") {
+      label = "Csúszik" + (ctx ? ` – ${ctx.name}` : "");
+    }
+    if (baseActivity === "lift") {
+      label = "Felvonón" + (ctx ? ` – ${ctx.name}` : "");
+    }
+    if (baseActivity === "rest") {
+      label = "Pihen" + (ctx ? ` – ${ctx.name}` : "");
+    }
+
+    update(ref(db, `members/${eventId}/${userId}`), {
+      name: userName,
+      lat,
+      lng,
+      speed: speedKmh,
+      activity: label,
+      lastUpdate: Date.now()
+    });
+
+    updateMarker(userId, lat, lng, `${userName}<br>${label}`);
+    statusEl.textContent = label;
+  }
+
+  function gpsError() {
+    statusEl.textContent = "GPS nem elérhető";
+  }
+
+  navigator.geolocation.watchPosition(
+    sendPosition,
+    gpsError,
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    }
+  );
+</script>
+
+</body>
+</html>
