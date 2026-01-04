@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Esemény létrehozása</title>
+  <title>Új esemény létrehozása</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -52,22 +52,26 @@
       border-radius: 6px;
       cursor: pointer;
     }
+
+    button:disabled {
+      background: #999;
+    }
   </style>
 </head>
 
 <body>
 
-<header>Esemény létrehozása</header>
+<header>Új esemény létrehozása</header>
 
 <main>
   <label>
     Esemény neve
-    <input id="name" />
+    <input id="name" placeholder="Pl. Hétvégi síelés" />
   </label>
 
   <label>
     Sítér neve
-    <input id="resort" />
+    <input id="resort" placeholder="Pl. St. Anton am Arlberg" />
   </label>
 
   <label>
@@ -85,11 +89,23 @@
 
 <script type="module">
   import { db } from "../js/config.js";
-  import { ref, push } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import {
+    ref,
+    push,
+    set
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  // ---- USER ----
+  const userId = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userName") || "Felhasználó";
+
+  if (!userId) {
+    alert("Nincs user azonosító");
+    location.href = "../index.html";
+    throw new Error("Missing userId");
+  }
 
   const btn = document.getElementById("createBtn");
-  const userId = localStorage.getItem("userId");
 
   btn.onclick = async () => {
     const name = document.getElementById("name").value.trim();
@@ -98,23 +114,46 @@
     const endAt = document.getElementById("endAt").value;
 
     if (!name || !resort || !startAt || !endAt) {
-      alert("Minden mező kötelező");
+      alert("Minden mező kitöltése kötelező");
+      return;
+    }
+
+    if (startAt >= endAt) {
+      alert("A befejezés nem lehet korábbi, mint a kezdés");
       return;
     }
 
     btn.disabled = true;
 
-    await push(ref(db, "events"), {
-      name,
-      resortName: resort,
-      startAt,
-      endAt,
-      status: "active",
-      ownerId: userId,
-      createdAt: Date.now()
-    });
+    try {
+      // 1️⃣ ESEMÉNY LÉTREHOZÁSA
+      const eventRef = await push(ref(db, "events"), {
+        name,
+        resortName: resort,
+        startAt,
+        endAt,
+        ownerId: userId,
+        status: "active",
+        createdAt: Date.now()
+      });
 
-    location.href = "../index.html";
+      const eventId = eventRef.key;
+
+      // 2️⃣ OWNER AUTOMATIKUS CSATLAKOZTATÁSA (HOST + MEMBER)
+      await set(ref(db, `members/${eventId}/${userId}`), {
+        name: userName,
+        role: "host",
+        joinedAt: Date.now()
+      });
+
+      // 3️⃣ VISSZA A FŐOLDALRA
+      location.href = "../index.html";
+
+    } catch (err) {
+      console.error(err);
+      alert("Hiba történt az esemény létrehozásakor");
+      btn.disabled = false;
+    }
   };
 </script>
 
