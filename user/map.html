@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Team Ski Tracker – Esemény</title>
+  <title>Esemény – Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
@@ -16,188 +16,119 @@
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: #000;
-      color: #fff;
     }
 
-    /* ===== TOP BAR ===== */
-    .topbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 56px;
-      background: #1f6f8b;
+    #app {
       display: flex;
-      align-items: center;
-      padding: 0 10px;
-      z-index: 2000;
-      gap: 8px;
+      height: 100vh;
+      width: 100vw;
     }
 
-    .topbar button {
-      background: white;
-      color: #1f6f8b;
-      border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .event-title {
-      flex: 1;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* ===== MAP ===== */
-    #map {
-      position: fixed;
-      top: 56px;
-      bottom: 140px;
-      left: 0;
-      right: 0;
-    }
-
-    /* ===== STATUS ===== */
-    .status {
-      position: fixed;
-      bottom: 92px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 14px;
-      z-index: 1500;
-      text-align: center;
-    }
-
-    /* ===== CONTROLS ===== */
-    .controls {
-      position: fixed;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 8px;
-      z-index: 1500;
-    }
-
-    .controls button {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-size: 14px;
-      cursor: pointer;
-      background: rgba(255,255,255,0.95);
-      color: #000;
-    }
-
-    .controls .primary {
+    /* ----- SIDEBAR ----- */
+    #sidebar {
+      width: 280px;
       background: #1f6f8b;
       color: white;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      box-sizing: border-box;
     }
 
-    .controls .danger {
-      background: #444;
+    #sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .menu-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
       color: white;
-    }
-
-    /* ===== HOST PANEL ===== */
-    .host-panel {
-      position: fixed;
-      right: 10px;
-      top: 66px;
-      background: rgba(0,0,0,0.85);
-      border-radius: 10px;
       padding: 10px;
-      z-index: 1600;
-      display: none;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
     }
 
-    .host-panel button {
-      width: 100%;
-      margin-top: 6px;
-      padding: 8px;
+    .menu-btn:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .section {
+      margin-top: 16px;
+    }
+
+    .member {
       font-size: 14px;
-      cursor: pointer;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .host {
+      font-weight: bold;
+    }
+
+    /* ----- MAP ----- */
+    #map {
+      flex: 1;
     }
   </style>
 </head>
 
 <body>
 
-<!-- TOP BAR -->
-<div class="topbar">
-  <button onclick="goHome()">⬅</button>
-  <div class="event-title" id="eventTitle">Esemény…</div>
-  <button onclick="leaveEvent()">🚪 Kilépés</button>
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <h2 id="eventName">Esemény</h2>
+
+    <button class="menu-btn" onclick="goHome()">⬅️ Vissza</button>
+
+    <div class="section">
+      <strong>Állapot</strong>
+      <button class="menu-btn" onclick="setState('rest')">☕ Pihenés</button>
+      <button class="menu-btn" onclick="setState('offline')">🚫 Offline</button>
+      <button class="menu-btn" onclick="setState('auto')">▶️ Automatikus</button>
+    </div>
+
+    <div class="section" id="hostSection" style="display:none">
+      <strong>HOST funkciók</strong>
+      <button class="menu-btn" onclick="showQr()">📎 Meghívó (QR)</button>
+      <button class="menu-btn" onclick="closeEvent()">🔒 Lezárás</button>
+    </div>
+
+    <div class="section">
+      <strong>Tagok</strong>
+      <div id="members"></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
 </div>
 
-<!-- HOST PANEL -->
-<div class="host-panel" id="hostPanel">
-  <button onclick="showQr()">📎 Meghívó</button>
-  <button onclick="endEvent()">🛑 Lezárás</button>
-  <button onclick="deleteEvent()">🗑️ Törlés</button>
-</div>
-
-<div id="map"></div>
-<div class="status" id="status">Pozíció meghatározása…</div>
-
-<div class="controls">
-  <button id="restBtn">☕ Pihenés</button>
-  <button id="offlineBtn" class="danger">🚫 Offline</button>
-  <button id="autoBtn" class="primary">▶️ Automatikus</button>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <script type="module">
   import { db } from "../js/config.js";
-  import {
-    ref,
-    onValue,
-    update,
-    remove,
-    get
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, onValue, update } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  // --------- PARAMS ---------
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
 
   const userId = localStorage.getItem("userId");
-  const userName = localStorage.getItem("userName") || "Ismeretlen";
+  const userName = localStorage.getItem("userName") || "Felhasználó";
 
   if (!eventId || !userId) {
-    alert("Hiányzó adat");
     location.href = "../index.html";
   }
 
-  const statusEl = document.getElementById("status");
-  const titleEl = document.getElementById("eventTitle");
-  const hostPanel = document.getElementById("hostPanel");
-
-  // --------- LOAD EVENT ---------
-  const eventSnap = await get(ref(db, `events/${eventId}`));
-  if (!eventSnap.exists()) {
-    alert("Az esemény nem létezik");
-    location.href = "../index.html";
-  }
-
-  const event = eventSnap.val();
-  titleEl.textContent = event.name;
-
-  const isOwner = event.ownerId === userId;
-  if (isOwner) {
-    hostPanel.style.display = "block";
-  }
-
-  // --------- MAP ---------
-  const map = L.map("map").setView([47.5, 19.04], 13);
+  // ----- MAP -----
+  const map = L.map("map").setView([47.4979, 19.0402], 13);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
@@ -213,57 +144,64 @@
     }
   }
 
-  // --------- MEMBERS ---------
+  // ----- EVENT -----
+  let isHost = false;
+
+  onValue(ref(db, `events/${eventId}`), snap => {
+    const e = snap.val();
+    if (!e) return;
+
+    document.getElementById("eventName").textContent = e.name;
+
+    if (e.ownerId === userId) {
+      isHost = true;
+      document.getElementById("hostSection").style.display = "block";
+    }
+  });
+
+  // ----- MEMBERS -----
   onValue(ref(db, `members/${eventId}`), snap => {
+    const list = document.getElementById("members");
+    list.innerHTML = "";
+
     const members = snap.val() || {};
-    const bounds = [];
 
     Object.entries(members).forEach(([id, m]) => {
-      if (!m.lat || !m.lng) return;
-      updateMarker(id, m.lat, m.lng, `${m.name}<br>${m.activity || ""}`);
-      bounds.push([m.lat, m.lng]);
-    });
+      const div = document.createElement("div");
+      div.className = "member" + (id === userId ? " host" : "");
+      div.textContent = m.name || "?";
+      list.appendChild(div);
 
-    if (bounds.length) map.fitBounds(bounds, { padding: [40,40] });
+      if (m.lat && m.lng) {
+        updateMarker(id, m.lat, m.lng, m.name);
+      }
+    });
   });
 
-  // --------- GPS ---------
-  navigator.geolocation.watchPosition(pos => {
+  // ----- ACTIONS -----
+  window.goHome = () => {
+    location.href = "../index.html";
+  };
+
+  window.setState = state => {
     update(ref(db, `members/${eventId}/${userId}`), {
-      name: userName,
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      lastUpdate: Date.now()
+      manualState: state
     });
-    statusEl.textContent = "Pozíció frissítve";
-  });
-
-  // --------- ACTIONS ---------
-  window.goHome = () => location.href = "../index.html";
-
-  window.leaveEvent = async () => {
-    if (!confirm("Kilépsz az eseményből?")) return;
-    await remove(ref(db, `members/${eventId}/${userId}`));
-    goHome();
-  };
-
-  window.endEvent = async () => {
-    if (!confirm("Lezárod az eseményt?")) return;
-    await update(ref(db, `events/${eventId}`), { status: "ended" });
-    alert("Esemény lezárva");
-  };
-
-  window.deleteEvent = async () => {
-    if (!confirm("VÉGLEG törlöd az eseményt?")) return;
-    await remove(ref(db, `events/${eventId}`));
-    await remove(ref(db, `members/${eventId}`));
-    goHome();
   };
 
   window.showQr = () => {
-    const url = `${location.origin}/team-ski-tracker/user/join.html?eventId=${eventId}`;
-    prompt("Meghívó link:", url);
+    const url = location.origin + location.pathname.replace("/user/map.html", "/user/join.html") + `?eventId=${eventId}`;
+    QRCode.toCanvas(document.createElement("canvas"), url, () => {
+      alert("Meghívó link:\n" + url);
+    });
   };
+
+  window.closeEvent = () => {
+    if (confirm("Lezárod az eseményt?")) {
+      update(ref(db, `events/${eventId}`), { status: "ended" });
+    }
+  };
+
 </script>
 
 </body>
