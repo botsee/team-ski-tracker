@@ -6,87 +6,159 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #f4f6f8;
+    :root {
+      --bg:#0e1116;
+      --panel:#151a21;
+      --panel-soft:rgba(21,26,33,.92);
+      --text:#e6e9ef;
+      --muted:#9aa4b2;
+
+      --accent:#4da3ff;
+      --danger:#e74c3c;
+
+      --r-lg:18px;
+      --r-md:14px;
+
+      --shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Inter", sans-serif;
+    }
+
+    /* HEADER */
     header {
-      background: #1f6f8b;
-      color: white;
-      padding: 16px;
-      font-size: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--panel-soft);
+      backdrop-filter: blur(10px);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header button {
+      border: none;
+      background: rgba(255,255,255,.12);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--r-md);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    header strong {
+      font-size: 16px;
       font-weight: 600;
     }
 
+    /* MAIN */
     main {
-      padding: 16px;
+      padding: 20px 16px;
       max-width: 480px;
       margin: auto;
+    }
+
+    .card {
+      background: rgba(255,255,255,.06);
+      border-radius: var(--r-lg);
+      padding: 18px 16px 20px;
+      box-shadow: var(--shadow);
     }
 
     label {
       display: block;
       margin-top: 14px;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 13px;
+      color: var(--muted);
     }
 
     input, select {
       width: 100%;
-      padding: 10px;
+      margin-top: 6px;
+      padding: 12px;
       font-size: 15px;
-      margin-top: 4px;
-      box-sizing: border-box;
+      border-radius: var(--r-md);
+      border: none;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      appearance: none;
     }
 
-    button {
-      margin-top: 20px;
+    input::placeholder {
+      color: #8b94a3;
+    }
+
+    /* CTA */
+    #createBtn {
+      margin-top: 22px;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       font-size: 16px;
-      background: #1f6f8b;
-      color: white;
+      border-radius: var(--r-md);
       border: none;
-      border-radius: 6px;
+      background: var(--accent);
+      color: white;
       cursor: pointer;
     }
 
-    button:disabled {
-      background: #aaa;
+    #createBtn:disabled {
+      background: rgba(255,255,255,.25);
+      cursor: not-allowed;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
     }
   </style>
 </head>
 
 <body>
 
-<header>Új esemény létrehozása</header>
+<header>
+  <button onclick="location.href='../index.html'">⬅️</button>
+  <strong>Új esemény</strong>
+</header>
 
 <main>
-  <label>
-    Esemény neve
-    <input id="name" placeholder="Pl. Hétvégi síelés" />
-  </label>
+  <div class="card">
+    <label>
+      Esemény neve
+      <input id="name" placeholder="Pl. Hétvégi síelés" />
+    </label>
 
-  <label>
-    Sítér
-    <select id="resort">
-      <option value="">– válassz síterepet –</option>
-    </select>
-  </label>
+    <label>
+      Sítér
+      <select id="resort">
+        <option value="">– válassz síterepet –</option>
+      </select>
+    </label>
 
-  <label>
-    Kezdés
-    <input id="startAt" type="datetime-local" />
-  </label>
+    <label>
+      Kezdés
+      <input id="startAt" type="datetime-local" />
+    </label>
 
-  <label>
-    Befejezés
-    <input id="endAt" type="datetime-local" />
-  </label>
+    <label>
+      Befejezés
+      <input id="endAt" type="datetime-local" />
+    </label>
 
-  <button id="createBtn">Esemény létrehozása</button>
+    <div class="hint">
+      Az esemény létrehozása után automatikusan csatlakozol hostként.
+    </div>
+
+    <button id="createBtn">Esemény létrehozása</button>
+  </div>
 </main>
 
 <script type="module">
@@ -106,7 +178,7 @@
   const resortSelect = document.getElementById("resort");
   const btn = document.getElementById("createBtn");
 
-  /* SÍTEREPEK BETÖLTÉSE */
+  /* SÍTEREPEK BETÖLTÉSE – VÁLTOZATLAN */
   Object.values(skiResorts).forEach(r => {
     const opt = document.createElement("option");
     opt.value = r.id;
@@ -146,7 +218,6 @@
       createdAt: Date.now()
     });
 
-    // HOST automatikus csatlakoztatása
     await set(ref(db, `members/${eventId}/${userId}`), {
       name: userName,
       role: "host",
