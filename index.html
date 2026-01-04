@@ -5,6 +5,9 @@
   <title>Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- QR lib -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
   <style>
     :root {
       --bg:#0e1116;
@@ -12,170 +15,148 @@
       --panel-soft:rgba(21,26,33,.92);
       --text:#e6e9ef;
       --muted:#9aa4b2;
-
       --accent:#4da3ff;
       --green:#2ecc71;
-
       --r-lg:18px;
       --r-md:14px;
-
       --shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
-    * { box-sizing: border-box; }
+    *{box-sizing:border-box}
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, "Inter", sans-serif;
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,"Inter",sans-serif;
     }
 
-    /* HEADER */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      background: var(--panel-soft);
-      backdrop-filter: blur(10px);
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    header{
+      position:sticky;
+      top:0;
+      z-index:5;
+      background:var(--panel-soft);
+      backdrop-filter:blur(10px);
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
 
-    header strong {
-      font-size: 16px;
-      font-weight: 600;
+    header strong{font-size:16px;font-weight:600}
+    #userLabel{font-size:13px;color:var(--muted);cursor:pointer}
+
+    header button{
+      border:none;
+      background:var(--accent);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:var(--r-md);
+      cursor:pointer;
+      font-size:14px;
     }
 
-    #userLabel {
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
+    main{
+      padding:16px;
+      max-width:720px;
+      margin:auto;
     }
 
-    header button {
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: var(--r-md);
-      font-size: 14px;
-      cursor: pointer;
+    h2{
+      font-size:14px;
+      font-weight:600;
+      color:var(--muted);
+      margin:22px 0 10px;
     }
 
-    main {
-      padding: 16px;
-      max-width: 720px;
-      margin: auto;
+    .event{
+      background:rgba(255,255,255,.06);
+      border-radius:var(--r-lg);
+      padding:14px 16px;
+      margin-bottom:12px;
+      box-shadow:var(--shadow);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
     }
 
-    h2 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--muted);
-      margin: 22px 0 10px;
+    .event strong{font-size:15px;display:block}
+    .event small{font-size:13px;color:var(--muted)}
+
+    .badge{
+      display:inline-block;
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      margin-left:6px;
+      color:white;
+      background:var(--accent);
+    }
+    .badge.member{background:var(--green)}
+
+    .actions{
+      display:flex;
+      gap:8px;
     }
 
-    /* EVENT CARD */
-    .event {
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r-lg);
-      padding: 14px 16px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: var(--shadow);
+    .actions button{
+      border:none;
+      background:rgba(255,255,255,.12);
+      color:var(--text);
+      padding:8px 12px;
+      border-radius:var(--r-md);
+      cursor:pointer;
+      font-size:13px;
     }
 
-    .event strong {
-      font-size: 15px;
-      display: block;
+    .empty{
+      font-size:13px;
+      color:var(--muted);
+      padding:8px 0;
     }
 
-    .event small {
-      font-size: 13px;
-      color: var(--muted);
+    /* JOIN MODAL */
+    .modal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.6);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:20;
     }
 
-    .event button {
-      border: none;
-      background: rgba(255,255,255,.12);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: var(--r-md);
-      cursor: pointer;
-      font-size: 13px;
+    .modal-content{
+      background:var(--panel);
+      padding:20px;
+      border-radius:var(--r-lg);
+      width:90%;
+      max-width:320px;
+      text-align:center;
+      box-shadow:var(--shadow);
     }
 
-    .badge {
-      display: inline-block;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      margin-left: 6px;
-      color: white;
-      background: var(--accent);
+    #qr{
+      margin:14px auto;
     }
 
-    .badge.member {
-      background: var(--green);
+    .link{
+      font-size:12px;
+      word-break:break-all;
+      color:var(--muted);
+      margin-top:10px;
     }
 
-    .empty {
-      font-size: 13px;
-      color: var(--muted);
-      padding: 8px 0;
-    }
-
-    /* MODAL */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.6);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-    }
-
-    .modal-content {
-      background: var(--panel);
-      padding: 20px;
-      border-radius: var(--r-lg);
-      width: 90%;
-      max-width: 320px;
-      box-shadow: var(--shadow);
-    }
-
-    .modal-content h3 {
-      margin: 0 0 10px;
-      font-size: 16px;
-    }
-
-    .modal-content input {
-      width: 100%;
-      padding: 12px;
-      font-size: 15px;
-      margin-top: 8px;
-      border-radius: var(--r-md);
-      border: none;
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-    }
-
-    .modal-content button {
-      margin-top: 14px;
-      width: 100%;
-      padding: 12px;
-      font-size: 15px;
-      border-radius: var(--r-md);
-      border: none;
-      background: var(--accent);
-      color: white;
-      cursor: pointer;
+    .copy{
+      margin-top:12px;
+      width:100%;
+      padding:10px;
+      border:none;
+      border-radius:var(--r-md);
+      background:rgba(255,255,255,.12);
+      color:var(--text);
+      cursor:pointer;
     }
   </style>
 </head>
@@ -198,12 +179,14 @@
   <div id="joined"></div>
 </main>
 
-<!-- NÉV MODAL -->
-<div id="nameModal" class="modal">
+<!-- JOIN MODAL -->
+<div id="joinModal" class="modal">
   <div class="modal-content">
-    <h3>Név megadása</h3>
-    <input id="nameInput" placeholder="Pl. Balázs" />
-    <button onclick="saveName()">Mentés</button>
+    <strong>Csatlakozás</strong>
+    <div id="qr"></div>
+    <div class="link" id="joinLink"></div>
+    <button class="copy" onclick="copyJoinLink()">Link másolása</button>
+    <button class="copy" onclick="closeJoin()">Bezárás</button>
   </div>
 </div>
 
@@ -218,93 +201,86 @@
     throw new Error("Missing userId");
   }
 
-  const userLabel = document.getElementById("userLabel");
-  const modal = document.getElementById("nameModal");
-  const input = document.getElementById("nameInput");
+  const userLabel=document.getElementById("userLabel");
+  let userName=localStorage.getItem("userName");
+  userLabel.textContent="👤 "+(userName||"Ismeretlen")+" ✏️";
+  userLabel.onclick=()=>location.reload();
 
-  let userName = localStorage.getItem("userName");
+  const ownedEl=document.getElementById("owned");
+  const joinedEl=document.getElementById("joined");
 
-  if (!userName) {
-    openNameEditor();
-  } else {
-    userLabel.textContent = "👤 " + userName + " ✏️";
-  }
+  let events={}, memberships={};
 
-  window.openNameEditor = () => {
-    input.value = localStorage.getItem("userName") || "";
-    modal.style.display = "flex";
-  };
-
-  window.saveName = () => {
-    const val = input.value.trim();
-    if (!val) return;
-    localStorage.setItem("userName", val);
-    modal.style.display = "none";
-    userLabel.textContent = "👤 " + val + " ✏️";
-  };
-
-  userLabel.onclick = openNameEditor;
-
-  const ownedEl = document.getElementById("owned");
-  const joinedEl = document.getElementById("joined");
-
-  let events = {};
-  let memberships = {};
-
-  onValue(ref(db, "events"), snap => {
-    events = snap.val() || {};
-    render();
-  });
-
-  onValue(ref(db, "members"), snap => {
-    const all = snap.val() || {};
-    memberships = {};
-    Object.entries(all).forEach(([eid, m]) => {
-      if (m[userId]) memberships[eid] = true;
+  onValue(ref(db,"events"),s=>{events=s.val()||{};render();});
+  onValue(ref(db,"members"),s=>{
+    memberships={};
+    Object.entries(s.val()||{}).forEach(([eid,m])=>{
+      if(m[userId]) memberships[eid]=true;
     });
     render();
   });
 
-  function render() {
-    ownedEl.innerHTML = "";
-    joinedEl.innerHTML = "";
+  function render(){
+    ownedEl.innerHTML="";
+    joinedEl.innerHTML="";
+    let hasOwned=false, hasJoined=false;
 
-    let hasOwned = false;
-    let hasJoined = false;
+    Object.entries(events).forEach(([id,e])=>{
+      const isOwner=e.ownerId===userId;
+      const isMember=memberships[id];
+      if(!isOwner && !isMember) return;
 
-    Object.entries(events).forEach(([id, e]) => {
-      const isOwner = e.ownerId === userId;
-      const isMember = memberships[id];
-      if (!isOwner && !isMember) return;
-
-      const div = document.createElement("div");
-      div.className = "event";
-      div.innerHTML = `
+      const div=document.createElement("div");
+      div.className="event";
+      div.innerHTML=`
         <div>
           <strong>${e.name}</strong>
-          <span class="badge ${isOwner ? "" : "member"}">
-            ${isOwner ? "HOST" : "MEMBER"}
+          <span class="badge ${isOwner?"":"member"}">
+            ${isOwner?"HOST":"MEMBER"}
           </span>
-          <small>${e.resortName || ""}</small>
+          <small>${e.resortName||""}</small>
         </div>
-        <button onclick="openEvent('${id}')">Megnyitás</button>
+        <div class="actions">
+          ${isOwner?`<button onclick="openJoin('${id}')">🔗</button>`:""}
+          <button onclick="openEvent('${id}')">Megnyitás</button>
+        </div>
       `;
 
-      if (isOwner) {
-        ownedEl.appendChild(div);
-        hasOwned = true;
-      } else {
-        joinedEl.appendChild(div);
-        hasJoined = true;
-      }
+      if(isOwner){ownedEl.appendChild(div);hasOwned=true;}
+      else{joinedEl.appendChild(div);hasJoined=true;}
     });
 
-    if (!hasOwned) ownedEl.innerHTML = `<div class="empty">Nincs saját eseményed</div>`;
-    if (!hasJoined) joinedEl.innerHTML = `<div class="empty">Még nem csatlakoztál eseményhez</div>`;
+    if(!hasOwned) ownedEl.innerHTML=`<div class="empty">Nincs saját eseményed</div>`;
+    if(!hasJoined) joinedEl.innerHTML=`<div class="empty">Még nem csatlakoztál eseményhez</div>`;
   }
 
-  window.openEvent = id => {
-    location.href = `./user/map.html?eventId=${id}`;
+  window.openEvent=id=>{
+    location.href=`./user/map.html?eventId=${id}`;
+  };
+
+  let currentJoinLink="";
+
+  window.openJoin=id=>{
+    currentJoinLink=`${location.origin}/user/map.html?eventId=${id}`;
+    document.getElementById("joinLink").textContent=currentJoinLink;
+    document.getElementById("qr").innerHTML="";
+    new QRCode(document.getElementById("qr"),{
+      text:currentJoinLink,
+      width:180,
+      height:180,
+      colorDark:"#ffffff",
+      colorLight:"transparent"
+    });
+    document.getElementById("joinModal").style.display="flex";
+  };
+
+  window.closeJoin=()=>{
+    document.getElementById("joinModal").style.display="none";
+  };
+
+  window.copyJoinLink=()=>{
+    navigator.clipboard.writeText(currentJoinLink);
+    alert("Link másolva");
   };
 </script>
 
