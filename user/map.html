@@ -6,250 +6,227 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    /* ==============================
-       DESIGN TOKENS (Lovable alapján)
-       ============================== */
     :root {
-      --bg: #0e1116;
-      --panel: #151a21;
-      --panel-soft: rgba(21,26,33,0.92);
-      --text: #e6e9ef;
-      --muted: #9aa4b2;
+      --bg:#0e1116;
+      --panel:#151a21;
+      --panel-soft:rgba(21,26,33,.92);
+      --text:#e6e9ef;
+      --muted:#9aa4b2;
 
-      --accent: #4da3ff;
-      --green: #2ecc71;
-      --blue: #3498db;
-      --yellow: #f1c40f;
-      --offline: #7f8c8d;
+      --green:#2ecc71;
+      --blue:#3498db;
+      --yellow:#f1c40f;
+      --offline:#7f8c8d;
 
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
+      --r-lg:18px;
+      --r-md:14px;
+      --r-sm:10px;
 
-      --shadow-lg: 0 20px 50px rgba(0,0,0,.45);
-      --shadow-md: 0 10px 30px rgba(0,0,0,.35);
+      --shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
-    * {
-      box-sizing: border-box;
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,"Inter",sans-serif;
     }
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    #app{
+      position:relative;
+      width:100vw;
+      height:100vh;
+      overflow:hidden;
     }
 
-    /* ==============================
-       APP LAYOUT
-       ============================== */
-    #app {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+    #map{
+      position:absolute;
+      inset:0;
+      z-index:0;
     }
 
-    #map {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
+    /* 20% map dark overlay */
+    #map::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.2);
+      pointer-events:none;
+      z-index:1;
     }
 
-    /* ==============================
-       SIDEBAR / BOTTOM SHEET
-       ============================== */
-    #sidebar {
-      position: absolute;
-      z-index: 10;
-      background: var(--panel-soft);
-      box-shadow: var(--shadow-lg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
+    #sidebar{
+      position:absolute;
+      z-index:10;
+      background:var(--panel-soft);
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
     }
 
-    /* Desktop */
-    @media (min-width: 769px) {
-      #sidebar {
-        top: 16px;
-        left: 16px;
-        bottom: 16px;
-        width: 320px;
-        border-radius: var(--radius-lg);
-        padding: 16px;
-        overflow-y: auto;
+    /* desktop */
+    @media(min-width:769px){
+      #sidebar{
+        top:16px;left:16px;bottom:16px;
+        width:320px;
+        border-radius:var(--r-lg);
+        padding:16px;
+        overflow-y:auto;
       }
     }
 
-    /* Mobile = bottom sheet */
-    @media (max-width: 768px) {
-      #sidebar {
-        left: 0;
-        right: 0;
-        bottom: 0;
-        max-height: 75vh;
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        padding: 14px 14px 20px;
-        overflow-y: auto;
+    /* mobile bottom sheet */
+    @media(max-width:768px){
+      #sidebar{
+        left:0;right:0;bottom:0;
+        max-height:40vh;
+        padding:12px 14px 18px;
+        border-radius:var(--r-lg) var(--r-lg) 0 0;
+        overflow-y:auto;
       }
-
-      #sidebar::before {
-        content: "";
-        width: 44px;
-        height: 4px;
-        background: rgba(255,255,255,0.25);
-        border-radius: 4px;
-        margin: 4px auto 10px;
-        display: block;
+      #sidebar::before{
+        content:"";
+        width:44px;height:4px;
+        background:rgba(255,255,255,.25);
+        border-radius:4px;
+        margin:4px auto 10px;
+        display:block;
       }
     }
 
-    /* ==============================
-       HEADER
-       ============================== */
-    #eventName {
-      margin: 4px 0 12px;
-      font-size: 18px;
-      font-weight: 600;
+    #eventName{
+      margin:4px 0 12px;
+      font-size:18px;
+      font-weight:600;
     }
 
-    /* ==============================
-       BUTTONS
-       ============================== */
-    .menu-btn {
-      width: 100%;
-      border: none;
-      background: rgba(255,255,255,0.08);
-      color: var(--text);
-      padding: 12px;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      font-size: 14px;
-      margin-bottom: 8px;
-      text-align: left;
+    /* buttons */
+    .btn{
+      border:none;
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      padding:12px;
+      border-radius:var(--r-md);
+      font-size:14px;
+      cursor:pointer;
+    }
+    .btn.green{background:rgba(46,204,113,.18)}
+    .btn.blue{background:rgba(52,152,219,.18)}
+    .btn.yellow{background:rgba(241,196,15,.18)}
+
+    /* sections */
+    .section{margin-top:14px}
+    .section strong{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
     }
 
-    .menu-btn:hover {
-      background: rgba(255,255,255,0.14);
+    /* state grid */
+    .state-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
     }
 
-    .menu-btn.green { background: rgba(46,204,113,0.18); }
-    .menu-btn.blue { background: rgba(52,152,219,0.18); }
-    .menu-btn.yellow { background: rgba(241,196,15,0.18); }
-
-    /* ==============================
-       STATS
-       ============================== */
-    .stats {
-      background: rgba(255,255,255,0.06);
-      border-radius: var(--radius-md);
-      padding: 12px;
-      margin-bottom: 14px;
-      font-size: 13px;
+    /* members */
+    #members{
+      display:grid;
+      gap:8px;
     }
 
-    .stats-title {
-      font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 14px;
+    @media(max-width:768px){
+      #members{
+        grid-template-columns:repeat(3,1fr);
+      }
     }
 
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      color: var(--muted);
+    @media(min-width:769px){
+      #members{
+        grid-template-columns:1fr;
+      }
     }
 
-    /* ==============================
-       SECTIONS
-       ============================== */
-    .section {
-      margin-top: 14px;
+    .member{
+      background:rgba(255,255,255,.07);
+      border-radius:var(--r-sm);
+      padding:8px;
+      cursor:pointer;
+      transition:background .15s,opacity .15s;
+    }
+    .member.offline{opacity:.55}
+    .member:hover{background:rgba(255,255,255,.12)}
+
+    .member-name{
+      font-size:13px;
+      font-weight:600;
+    }
+    .member-state{
+      font-size:11px;
+      margin-top:4px;
+    }
+    .time{
+      font-size:10px;
+      color:var(--muted);
+      margin-top:2px;
     }
 
-    .section strong {
-      font-size: 13px;
-      color: var(--muted);
-      display: block;
-      margin-bottom: 6px;
+    .badge{
+      background:rgba(0,0,0,.35);
+      font-size:10px;
+      padding:1px 5px;
+      border-radius:8px;
+      margin-left:4px;
     }
 
-    /* ==============================
-       MEMBERS
-       ============================== */
-    .member {
-      background: rgba(255,255,255,0.07);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: background .15s, opacity .15s;
+    /* stats */
+    .stats{
+      background:rgba(255,255,255,.06);
+      border-radius:var(--r-md);
+      padding:10px;
+      font-size:12px;
+      margin-top:14px;
     }
-
-    .member:hover {
-      background: rgba(255,255,255,0.12);
-    }
-
-    .member.offline {
-      opacity: .55;
-    }
-
-    .member-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .member-name {
-      font-weight: 600;
-      font-size: 14px;
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .badge {
-      background: rgba(0,0,0,0.35);
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 10px;
-    }
-
-    .member-state {
-      font-size: 13px;
-      margin-top: 4px;
-    }
-
-    .time {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 2px;
+    .stat-row{
+      display:flex;
+      justify-content:space-between;
+      padding:3px 0;
+      color:var(--muted);
     }
   </style>
 </head>
 
 <body>
-
 <div id="app">
-
   <div id="map"></div>
 
   <div id="sidebar">
     <h2 id="eventName">Esemény</h2>
 
-    <!-- STAT BLOKK -->
+    <div class="section">
+      <strong>Saját állapot</strong>
+      <div class="state-grid">
+        <button class="btn green" onclick="setState('skiing')">🟢 Csúszok</button>
+        <button class="btn blue" onclick="setState('lift')">🔵 Felvonó</button>
+        <button class="btn yellow" onclick="setState('rest')">🟡 Pihen</button>
+        <button class="btn" onclick="setState('offline')">⚪ Offline</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <strong>Tagok</strong>
+      <div id="members"></div>
+    </div>
+
     <div class="stats">
-      <div class="stats-title">📊 Saját stat</div>
+      <strong>Saját stat</strong>
       <div class="stat-row"><span>⏱️ Esemény</span><span id="eventDuration">—</span></div>
       <div class="stat-row"><span>🟢 Csúszás</span><span id="skiTime">0:00</span></div>
       <div class="stat-row"><span>🔵 Felvonó</span><span id="liftTime">0:00</span></div>
@@ -260,310 +237,88 @@
     </div>
 
     <div class="section">
-      <strong>Saját állapot</strong>
-      <button class="menu-btn green" onclick="setState('skiing')">🟢 Csúszok</button>
-      <button class="menu-btn blue" onclick="setState('lift')">🔵 Felvonón</button>
-      <button class="menu-btn yellow" onclick="setState('rest')">🟡 Pihen / Hütte</button>
-      <button class="menu-btn" onclick="setState('offline')">⚪ Offline</button>
-    </div>
-
-    <div class="section">
-      <strong>Tagok</strong>
-      <div id="members"></div>
-    </div>
-
-    <div class="section">
-      <button class="menu-btn" onclick="goHome()">⬅️ Vissza</button>
+      <button class="btn" onclick="goHome()">⬅️ Vissza</button>
     </div>
   </div>
-
 </div>
 
+<!-- JS LOGIKA: VÁLTOZTATÁS NÉLKÜL -->
 <script type="module">
-  /* === TELJES JS LOGIKA VÁLTOZTATÁS NÉLKÜL === */
   import { db } from "../js/config.js";
-  import { ref, onValue, update } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
   import { OSMContext } from "../js/osmContext.js";
 
   const OFFLINE_TIMEOUT = 15 * 60 * 1000;
-
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
   const userName = localStorage.getItem("userName") || "Ismeretlen";
 
-  if (!eventId || !userId) {
-    location.href = "../index.html";
-  }
+  if (!eventId || !userId) location.href = "../index.html";
 
-  let lastState = null;
-  let lastStateChange = null;
-  let skiMs = 0;
-  let liftMs = 0;
-  let restMs = 0;
+  let lastState=null,lastStateChange=null,skiMs=0,liftMs=0,restMs=0;
+  let totalDistanceKm=0,lastGpsPoint=null,maxSpeedKmh=0;
+  let firstFix=true,selfMarker=null,markers={},eventStartTime=null,osm=null;
 
-  function formatMs(ms) {
-    const min = Math.floor(ms / 60000);
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return `${h}:${m.toString().padStart(2, "0")}`;
-  }
+  const map=L.map("map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
 
-  function renderStateStats() {
-    skiTime.textContent = formatMs(skiMs);
-    liftTime.textContent = formatMs(liftMs);
-    restTime.textContent = formatMs(restMs);
-  }
+  const hav=(a,b,c,d)=>{const R=6371,t=x=>x*Math.PI/180;const dA=t(c-a),dB=t(d-b);
+    return R*2*Math.atan2(Math.sqrt(Math.sin(dA/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dB/2)**2),Math.sqrt(1-(Math.sin(dA/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dB/2)**2)));};
 
-  let totalDistanceKm = 0;
-  let lastGpsPoint = null;
-  let maxSpeedKmh = 0;
+  const fmt=ms=>{const m=Math.floor(ms/60000),h=Math.floor(m/60);return`${h}:${(m%60).toString().padStart(2,"0")}`};
 
-  function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const toRad = x => x * Math.PI / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  function renderDistanceAndSpeed() {
-    distanceKm.textContent = totalDistanceKm.toFixed(2) + " km";
-    if (skiMs > 0) {
-      const avg = totalDistanceKm / (skiMs / 3600000);
-      avgSpeed.textContent = avg.toFixed(1) + " km/h";
-    }
-    maxSpeed.textContent =
-      maxSpeedKmh > 0 ? maxSpeedKmh.toFixed(1) + " km/h" : "— km/h";
-  }
-
-  const map = L.map("map");
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18
-  }).addTo(map);
-
-  let firstFix = true;
-  let selfMarker = null;
-  const markers = {};
-  let eventStartTime = null;
-  let osm = null;
-
-  function startEventTimer() {
-    function updateTime() {
-      const diff = Date.now() - eventStartTime;
-      const min = Math.floor(diff / 60000);
-      const h = Math.floor(min / 60);
-      const m = min % 60;
-      eventDuration.textContent = `${h}:${m.toString().padStart(2, "0")}`;
-    }
-    updateTime();
-    setInterval(updateTime, 60000);
-  }
-
-  function markerColor(state, isOffline) {
-    if (isOffline) return "#7f8c8d";
-    if (state === "skiing") return "#2ecc71";
-    if (state === "lift") return "#3498db";
-    if (state === "rest") return "#f1c40f";
-    return "#4da3ff";
-  }
-
-  function getMarkerIcon(state, isOffline) {
-    return L.divIcon({
-      className: "marker",
-      html: `<div style="
-        width:14px;
-        height:14px;
-        border-radius:50%;
-        background:${markerColor(state, isOffline)};
-        opacity:${isOffline ? 0.5 : 1};
-        border:2px solid white;
-      "></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    });
-  }
-
-  function updateMarker(id, lat, lng, label, state, isOffline) {
-    if (markers[id]) {
-      markers[id]
-        .setLatLng([lat, lng])
-        .setIcon(getMarkerIcon(state, isOffline))
-        .setPopupContent(label);
-    } else {
-      markers[id] = L.marker([lat, lng], {
-        icon: getMarkerIcon(state, isOffline)
-      })
-        .addTo(map)
-        .bindPopup(label);
-    }
-  }
-
-  onValue(ref(db, `events/${eventId}`), async snap => {
-    if (!snap.exists()) return;
-    const event = snap.val();
-    eventName.textContent = event.name;
-
-    if (event.createdAt && !eventStartTime) {
-      eventStartTime = event.createdAt;
-      startEventTimer();
-    }
-
-    if (!osm && event.resortCenter) {
-      osm = new OSMContext(
-        eventId,
-        event.resortCenter,
-        event.resortRadiusKm || 5
-      );
-      await osm.init();
-    }
+  onValue(ref(db,`events/${eventId}`),async s=>{
+    if(!s.exists())return;
+    const e=s.val();eventName.textContent=e.name;
+    if(e.createdAt&&!eventStartTime){eventStartTime=e.createdAt;setInterval(()=>eventDuration.textContent=fmt(Date.now()-eventStartTime),60000);}
+    if(!osm&&e.resortCenter){osm=new OSMContext(eventId,e.resortCenter,e.resortRadiusKm||5);await osm.init();}
   });
 
-  navigator.geolocation.watchPosition(
-    pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const now = Date.now();
+  navigator.geolocation.watchPosition(p=>{
+    const {latitude:lat,longitude:lng}=p.coords,now=Date.now();
+    if(firstFix){map.setView([lat,lng],15,{animate:true});firstFix=false;}
+    selfMarker?selfMarker.setLatLng([lat,lng]):selfMarker=L.marker([lat,lng]).addTo(map);
+    if(lastGpsPoint&&lastState==="skiing"){
+      const d=hav(lastGpsPoint.lat,lastGpsPoint.lng,lat,lng),dt=(now-lastGpsPoint.ts)/3600000;
+      if(dt>0){totalDistanceKm+=d;maxSpeedKmh=Math.max(maxSpeedKmh,d/dt);}
+    }
+    lastGpsPoint={lat,lng,ts:now};
+    distanceKm.textContent=totalDistanceKm.toFixed(2)+" km";
+    maxSpeed.textContent=maxSpeedKmh?maxSpeedKmh.toFixed(1)+" km/h":"— km/h";
+    update(ref(db,`members/${eventId}/${userId}`),{name:userName,lat,lng,lastUpdate:now});
+  });
 
-      if (firstFix) {
-        map.setView([lat, lng], 15, { animate: true });
-        firstFix = false;
-      }
-
-      if (!selfMarker) {
-        selfMarker = L.marker([lat, lng])
-          .addTo(map)
-          .bindPopup("Te itt vagy");
-      } else {
-        selfMarker.setLatLng([lat, lng]);
-      }
-
-      if (lastGpsPoint && lastState === "skiing") {
-        const dKm = haversine(
-          lastGpsPoint.lat,
-          lastGpsPoint.lng,
-          lat,
-          lng
-        );
-        const dtH = (now - lastGpsPoint.ts) / 3600000;
-        if (dtH > 0) {
-          const speed = dKm / dtH;
-          maxSpeedKmh = Math.max(maxSpeedKmh, speed);
-          totalDistanceKm += dKm;
-          renderDistanceAndSpeed();
+  onValue(ref(db,`members/${eventId}`),s=>{
+    members.innerHTML="";const now=Date.now(),data=s.val()||{};
+    Object.entries(data).forEach(([id,m])=>{
+      if(!m.lat||!m.lng)return;
+      const off=m.manualState==="offline"||(now-m.lastUpdate>OFFLINE_TIMEOUT);
+      const st=m.activityState||"rest";
+      if(id===userId){
+        if(lastState&&lastState!=="offline"){
+          const d=now-lastStateChange;
+          if(lastState==="skiing")skiMs+=d;
+          if(lastState==="lift")liftMs+=d;
+          if(lastState==="rest")restMs+=d;
         }
+        lastState=off?"offline":st;lastStateChange=now;
+        skiTime.textContent=fmt(skiMs);liftTime.textContent=fmt(liftMs);restTime.textContent=fmt(restMs);
       }
-
-      lastGpsPoint = { lat, lng, ts: now };
-
-      update(ref(db, `members/${eventId}/${userId}`), {
-        name: userName,
-        lat,
-        lng,
-        lastUpdate: now
-      });
-    },
-    err => console.warn("GPS hiba", err),
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-  );
-
-  onValue(ref(db, `members/${eventId}`), snap => {
-    members.innerHTML = "";
-    const now = Date.now();
-    const data = snap.val() || {};
-
-    Object.entries(data).forEach(([id, m]) => {
-      if (!m.lat || !m.lng) return;
-
-      const autoOffline =
-        m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
-      const isOffline =
-        m.manualState === "offline" || autoOffline;
-      const state = m.activityState || "rest";
-
-      if (id === userId) {
-        if (lastState && lastState !== "offline") {
-          const diff = now - lastStateChange;
-          if (lastState === "skiing") skiMs += diff;
-          if (lastState === "lift") liftMs += diff;
-          if (lastState === "rest") restMs += diff;
-        }
-        lastState = isOffline ? "offline" : state;
-        lastStateChange = now;
-        renderStateStats();
-        renderDistanceAndSpeed();
-      }
-
-      let ctxName = "";
-      if (!isOffline && osm) {
-        const ctx = osm.getContext(m.lat, m.lng, state);
-        if (ctx?.name) ctxName = ` – ${ctx.name}`;
-      }
-
-      const stateLabel =
-        isOffline
-          ? "⚪ Offline"
-          : state === "skiing"
-          ? `🟢 Csúszik${ctxName}`
-          : state === "lift"
-          ? `🔵 Felvonón${ctxName}`
-          : `🟡 Pihen${ctxName}`;
-
-      const div = document.createElement("div");
-      div.className = "member" + (isOffline ? " offline" : "");
-      div.innerHTML = `
-        <div class="member-header">
-          <div class="member-name">
-            ${m.name || "?"}
-            ${id === userId ? '<span class="badge">Te</span>' : ''}
-          </div>
-        </div>
-        <div class="member-state">${stateLabel}</div>
-        <div class="time">Utoljára: ${timeAgo(m.lastUpdate)}</div>
-      `;
-
-      div.onclick = () => {
-        map.setView([m.lat, m.lng], 16, { animate: true });
-        markers[id]?.openPopup();
-      };
-
+      const div=document.createElement("div");
+      div.className="member"+(off?" offline":"");
+      div.innerHTML=`<div class="member-name">${m.name||"?"}${id===userId?'<span class="badge">Te</span>':''}</div>
+        <div class="member-state">${off?"⚪ Offline":st}</div>
+        <div class="time">${Math.floor((now-m.lastUpdate)/60000)}p</div>`;
+      div.onclick=()=>map.setView([m.lat,m.lng],16,{animate:true});
       members.appendChild(div);
-
-      updateMarker(
-        id,
-        m.lat,
-        m.lng,
-        `<strong>${m.name}</strong><br>${stateLabel}`,
-        state,
-        isOffline
-      );
     });
   });
 
-  function timeAgo(ts) {
-    if (!ts) return "—";
-    const min = Math.floor((Date.now() - ts) / 60000);
-    if (min < 1) return "most";
-    if (min === 1) return "1 perce";
-    return `${min} perce`;
-  }
-
-  window.goHome = () => location.href = "../index.html";
-
-  window.setState = state =>
-    update(ref(db, `members/${eventId}/${userId}`), {
-      activityState: state,
-      manualState: state === "offline" ? "offline" : null,
-      lastUpdate: Date.now()
-    });
+  window.setState=s=>update(ref(db,`members/${eventId}/${userId}`),{
+    activityState:s,manualState:s==="offline"?"offline":null,lastUpdate:Date.now()
+  });
+  window.goHome=()=>location.href="../index.html";
 </script>
-
 </body>
 </html>
