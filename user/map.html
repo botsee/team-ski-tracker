@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Team Ski Tracker – Térkép</title>
+  <title>Esemény – Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link
@@ -12,162 +12,220 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #000;
-    }
+    body { margin: 0; font-family: system-ui, sans-serif; }
 
-    #map {
-      height: 100vh;
-      margin-left: 260px;
-    }
+    #app { display: flex; height: 100vh; width: 100vw; }
 
-    /* SIDEBAR */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 260px;
-      height: 100vh;
+    #sidebar {
+      width: 300px;
       background: #1f6f8b;
       color: white;
       padding: 14px;
       box-sizing: border-box;
       overflow-y: auto;
-      z-index: 1000;
     }
 
-    .sidebar h3 {
-      margin-top: 16px;
-      margin-bottom: 8px;
-      font-size: 15px;
-      opacity: 0.9;
-    }
+    #sidebar h2 { margin-top: 0; }
 
-    .sidebar button {
+    .menu-btn {
       width: 100%;
-      margin-bottom: 6px;
-      padding: 8px;
+      background: rgba(255,255,255,0.15);
       border: none;
+      color: white;
+      padding: 10px;
+      margin-bottom: 6px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
+      text-align: left;
     }
 
-    .btn {
-      background: white;
-      color: #1f6f8b;
-    }
-
-    .btn-secondary {
-      background: rgba(255,255,255,0.15);
-      color: white;
-    }
+    .section { margin-top: 18px; }
 
     .member {
-      background: rgba(255,255,255,0.12);
-      padding: 6px 8px;
-      border-radius: 6px;
-      margin-bottom: 6px;
-      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 14px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer;
     }
 
     .member:hover {
-      background: rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.12);
     }
+
+    .left {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .time {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    #map { flex: 1; }
   </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-  <button class="btn" onclick="goBack()">⬅️ Vissza</button>
+<div id="app">
 
-  <h3>Állapot</h3>
-  <button class="btn-secondary" onclick="setRest()">☕ Pihenés</button>
-  <button class="btn-secondary" onclick="setOffline()">🚫 Offline</button>
-  <button class="btn-secondary" onclick="setAuto()">▶️ Automatikus</button>
+  <div id="sidebar">
+    <h2 id="eventName">Esemény</h2>
 
-  <h3>Tagok</h3>
-  <div id="memberList"></div>
+    <button class="menu-btn" onclick="goHome()">⬅️ Vissza</button>
+
+    <div class="section">
+      <strong>Saját állapot</strong>
+      <button class="menu-btn" onclick="setState('skiing')">🟢 Csúszok</button>
+      <button class="menu-btn" onclick="setState('lift')">🔵 Felvonó</button>
+      <button class="menu-btn" onclick="setState('rest')">🟡 Pihen / Hütte</button>
+      <button class="menu-btn" onclick="setState('offline')">⚪ Offline</button>
+    </div>
+
+    <div class="section">
+      <strong>Tagok</strong>
+      <div id="members"></div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
 </div>
-
-<div id="map"></div>
 
 <script type="module">
   import { db } from "../js/config.js";
-  import {
-    ref,
-    onValue,
-    update
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { ref, onValue, update } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
   const userName = localStorage.getItem("userName") || "Ismeretlen";
 
-  if (!eventId || !userId) {
-    alert("Hiányzó adatok");
-    location.href = "/";
-  }
+  if (!eventId || !userId) location.href = "../index.html";
 
-  /* MAP */
-  const map = L.map("map").setView([47.4979, 19.0402], 13);
+  const map = L.map("map").setView([47.5, 19.04], 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
   }).addTo(map);
 
   const markers = {};
-  const memberList = document.getElementById("memberList");
 
-  function focusMember(id) {
-    const m = markers[id];
-    if (!m) return;
-    map.setView(m.getLatLng(), 16, { animate: true });
-    m.openPopup();
+  function markerColor(state, isOffline) {
+    if (isOffline) return "#999";
+    if (state === "skiing") return "#2ecc71";
+    if (state === "lift") return "#3498db";
+    if (state === "rest") return "#f1c40f";
+    return "#1f6f8b";
   }
 
+  function getMarkerIcon(state, isOffline) {
+    return L.divIcon({
+      className: "marker",
+      html: `<div style="
+        width:14px;
+        height:14px;
+        border-radius:50%;
+        background:${markerColor(state, isOffline)};
+        opacity:${isOffline ? 0.5 : 1};
+        border:2px solid white;
+      "></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+  }
+
+  function updateMarker(id, lat, lng, label, state, isOffline) {
+    if (markers[id]) {
+      markers[id]
+        .setLatLng([lat, lng])
+        .setIcon(getMarkerIcon(state, isOffline))
+        .setPopupContent(label);
+    } else {
+      markers[id] = L.marker([lat, lng], {
+        icon: getMarkerIcon(state, isOffline)
+      })
+        .addTo(map)
+        .bindPopup(label);
+    }
+  }
+
+  onValue(ref(db, `events/${eventId}`), snap => {
+    if (snap.exists()) {
+      document.getElementById("eventName").textContent = snap.val().name;
+    }
+  });
+
   onValue(ref(db, `members/${eventId}`), snap => {
+    const list = document.getElementById("members");
+    list.innerHTML = "";
+
+    const now = Date.now();
     const members = snap.val() || {};
-    memberList.innerHTML = "";
 
     Object.entries(members).forEach(([id, m]) => {
-      if (!m.lat || !m.lng) return;
+      const autoOffline = m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
+      const isOffline = m.manualState === "offline" || autoOffline;
 
-      // MARKER
-      if (!markers[id]) {
-        markers[id] = L.marker([m.lat, m.lng]).addTo(map);
-      } else {
-        markers[id].setLatLng([m.lat, m.lng]);
-      }
+      const state = m.activityState || "rest";
+      const icon =
+        isOffline ? "⚪" :
+        state === "skiing" ? "🟢" :
+        state === "lift" ? "🔵" :
+        "🟡";
 
-      markers[id].bindPopup(`<b>${m.name}</b><br>${m.activity || ""}`);
-
-      // LIST ITEM
       const div = document.createElement("div");
       div.className = "member";
-      div.textContent = m.name || "Ismeretlen";
-      div.onclick = () => focusMember(id);
-      memberList.appendChild(div);
+      div.innerHTML = `
+        <div class="left">${icon} ${m.name || "?"}</div>
+        <div class="time">${isOffline ? "offline" : timeAgo(m.lastUpdate)}</div>
+      `;
+
+      div.onclick = () => {
+        if (m.lat && m.lng) {
+          map.setView([m.lat, m.lng], 16, { animate: true });
+          markers[id]?.openPopup();
+        }
+      };
+
+      list.appendChild(div);
+
+      if (m.lat && m.lng) {
+        const label = `
+          <strong>${m.name}</strong><br>
+          ${isOffline ? "⚪ Offline" :
+            state === "skiing" ? "🟢 Csúszik" :
+            state === "lift" ? "🔵 Felvonón" :
+            "🟡 Pihen"}
+        `;
+        updateMarker(id, m.lat, m.lng, label, state, isOffline);
+      }
     });
   });
 
-  /* STATE BUTTONS */
-  window.setRest = () =>
-    update(ref(db, `members/${eventId}/${userId}`), { activity: "Pihen" });
+  function timeAgo(ts) {
+    if (!ts) return "";
+    const min = Math.floor((Date.now() - ts) / 60000);
+    if (min < 1) return "most";
+    if (min === 1) return "1 perce";
+    return `${min} perce`;
+  }
 
-  window.setOffline = () =>
-    update(ref(db, `members/${eventId}/${userId}`), { activity: "Offline" });
+  window.goHome = () => location.href = "../index.html";
 
-  window.setAuto = () =>
-    update(ref(db, `members/${eventId}/${userId}`), { activity: "Automatikus" });
-
-  window.goBack = () => {
-    location.href = "/";
-  };
+  window.setState = state =>
+    update(ref(db, `members/${eventId}/${userId}`), {
+      activityState: state,
+      manualState: state === "offline" ? "offline" : null,
+      lastUpdate: Date.now()
+    });
 </script>
 
 </body>
