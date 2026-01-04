@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Ski Tracker – Csatlakozás</title>
+</head>
+
+<body>
+  <h1>Team Ski Tracker</h1>
+  <p>Csatlakozás egy meglévő csoporthoz</p>
+
+  <hr>
+
+  <form id="joinForm">
+    <div>
+      <label>
+        Csoport ID:<br>
+        <input type="text" id="groupId" required>
+      </label>
+    </div>
+    <br>
+
+    <div>
+      <label>
+        Teljes név:<br>
+        <input type="text" id="fullName" required>
+      </label>
+    </div>
+    <br>
+
+    <div>
+      <label>
+        Becenév (ez jelenik meg a térképen):<br>
+        <input type="text" id="nickName" required>
+      </label>
+    </div>
+    <br>
+
+    <button type="submit">
+      Csatlakozás a csoporthoz
+    </button>
+  </form>
+
+  <hr>
+
+  <p id="statusMessage"></p>
+
+  <!-- FIREBASE LOGIKA -->
+  <script type="module">
+    /* ===== FIREBASE KAPCSOLAT ===== */
+    import { db } from "./js/config.js";
+
+    import {
+      ref,
+      set,
+      push,
+      get
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const form = document.getElementById("joinForm");
+    const statusMessage = document.getElementById("statusMessage");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const groupId = document.getElementById("groupId").value.trim();
+      const fullName = document.getElementById("fullName").value.trim();
+      const nickName = document.getElementById("nickName").value.trim();
+
+      if (!groupId || !fullName || !nickName) {
+        statusMessage.textContent = "❌ Minden mező kitöltése kötelező.";
+        return;
+      }
+
+      try {
+        // Ellenőrizzük, hogy létezik-e a csoport
+        const groupRef = ref(db, `groups/${groupId}`);
+        const snapshot = await get(groupRef);
+
+        if (!snapshot.exists()) {
+          statusMessage.textContent = "❌ A megadott csoport nem létezik.";
+          return;
+        }
+
+        // Új tag létrehozása
+        const membersRef = ref(db, `groups/${groupId}/members`);
+        const newMemberRef = push(membersRef);
+
+        await set(newMemberRef, {
+          fullName: fullName,
+          nickName: nickName,
+          joinedAt: Date.now()
+        });
+
+        statusMessage.textContent = "✅ Sikeresen csatlakoztál a csoporthoz!";
+        form.reset();
+
+      } catch (error) {
+        console.error("❌ Hiba csatlakozáskor:", error);
+        statusMessage.textContent = "❌ Hiba történt csatlakozás közben.";
+      }
+    });
+  </script>
+</body>
+</html>
