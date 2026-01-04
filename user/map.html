@@ -5,6 +5,7 @@
   <title>Esemény – Team Ski Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,7 +14,6 @@
 
   <style>
     body { margin: 0; font-family: system-ui, sans-serif; }
-
     #app { display: flex; height: 100vh; width: 100vw; }
 
     #sidebar {
@@ -74,6 +74,7 @@
 
 <div id="app">
 
+  <!-- SIDEBAR -->
   <div id="sidebar">
     <h2 id="eventName">Esemény</h2>
 
@@ -88,11 +89,17 @@
     </div>
 
     <div class="section">
+      <strong>Térkép</strong>
+      <button class="menu-btn" onclick="togglePistes()">🎿 Pályák megjelenítése</button>
+    </div>
+
+    <div class="section">
       <strong>Tagok</strong>
       <div id="members"></div>
     </div>
   </div>
 
+  <!-- MAP -->
   <div id="map"></div>
 
 </div>
@@ -101,23 +108,30 @@
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { OSMContext } from "../js/osmContext.js";
+  import { PisteLayer } from "../js/pisteLayer.js";
 
   const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
-  const userName = localStorage.getItem("userName") || "Ismeretlen";
 
-  if (!eventId || !userId) location.href = "../index.html";
+  if (!eventId || !userId) {
+    location.href = "../index.html";
+  }
 
+  /* MAP INIT */
   const map = L.map("map").setView([47.5, 19.04], 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
   }).addTo(map);
 
   const markers = {};
+  let osm = null;
+  let pisteLayer = null;
 
+  /* MARKER HELPERS */
   function markerColor(state, isOffline) {
     if (isOffline) return "#999";
     if (state === "skiing") return "#2ecc71";
@@ -157,12 +171,33 @@
     }
   }
 
-  onValue(ref(db, `events/${eventId}`), snap => {
-    if (snap.exists()) {
-      document.getElementById("eventName").textContent = snap.val().name;
+  /* EVENT + OSM INIT */
+  onValue(ref(db, `events/${eventId}`), async snap => {
+    if (!snap.exists()) return;
+
+    const event = snap.val();
+    document.getElementById("eventName").textContent = event.name;
+
+    if (!osm) {
+      osm = new OSMContext(
+        eventId,
+        { lat: 47.5, lng: 19.04 }, // később: resort koordináta
+        5
+      );
+      await osm.init();
+    }
+
+    if (!pisteLayer) {
+      pisteLayer = new PisteLayer(
+        map,
+        eventId,
+        { lat: 47.5, lng: 19.04 },
+        5
+      );
     }
   });
 
+  /* MEMBERS */
   onValue(ref(db, `members/${eventId}`), snap => {
     const list = document.getElementById("members");
     list.innerHTML = "";
@@ -171,41 +206,59 @@
     const members = snap.val() || {};
 
     Object.entries(members).forEach(([id, m]) => {
-      const autoOffline = m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
-      const isOffline = m.manualState === "offline" || autoOffline;
+      const autoOffline =
+        m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
+      const isOffline =
+        m.manualState === "offline" || autoOffline;
 
       const state = m.activityState || "rest";
+
+      let ctxName = "";
+      if (!isOffline && osm && m.lat && m.lng) {
+        const ctx = osm.getContext(m.lat, m.lng, state);
+        if (ctx?.name) ctxName = ` – ${ctx.name}`;
+      }
+
+      const label =
+        isOffline
+          ? "⚪ Offline"
+          : state === "skiing"
+          ? `🟢 Csúszik${ctxName}`
+          : state === "lift"
+          ? `🔵 Felvonón${ctxName}`
+          : `🟡 Pihen${ctxName}`;
+
       const icon =
         isOffline ? "⚪" :
         state === "skiing" ? "🟢" :
         state === "lift" ? "🔵" :
         "🟡";
 
+      /* TAGLISTA */
       const div = document.createElement("div");
       div.className = "member";
       div.innerHTML = `
         <div class="left">${icon} ${m.name || "?"}</div>
         <div class="time">${isOffline ? "offline" : timeAgo(m.lastUpdate)}</div>
       `;
-
       div.onclick = () => {
         if (m.lat && m.lng) {
           map.setView([m.lat, m.lng], 16, { animate: true });
           markers[id]?.openPopup();
         }
       };
-
       list.appendChild(div);
 
+      /* MARKER */
       if (m.lat && m.lng) {
-        const label = `
-          <strong>${m.name}</strong><br>
-          ${isOffline ? "⚪ Offline" :
-            state === "skiing" ? "🟢 Csúszik" :
-            state === "lift" ? "🔵 Felvonón" :
-            "🟡 Pihen"}
-        `;
-        updateMarker(id, m.lat, m.lng, label, state, isOffline);
+        updateMarker(
+          id,
+          m.lat,
+          m.lng,
+          `<strong>${m.name}</strong><br>${label}`,
+          state,
+          isOffline
+        );
       }
     });
   });
@@ -218,7 +271,10 @@
     return `${min} perce`;
   }
 
-  window.goHome = () => location.href = "../index.html";
+  /* ACTIONS */
+  window.goHome = () => {
+    location.href = "../index.html";
+  };
 
   window.setState = state =>
     update(ref(db, `members/${eventId}/${userId}`), {
@@ -226,6 +282,12 @@
       manualState: state === "offline" ? "offline" : null,
       lastUpdate: Date.now()
     });
+
+  window.togglePistes = async () => {
+    if (pisteLayer) {
+      await pisteLayer.toggle();
+    }
+  };
 </script>
 
 </body>
