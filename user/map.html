@@ -446,6 +446,21 @@ onValue(ref(db, `members/${eventId}`), snap => {
   };
 
   window.goHome=()=>location.href="../index.html";
+  /* ================= OWNER ACTIONS ================= */
+onValue(ref(db, `events/${eventId}`), snap => {
+  if (!snap.exists()) return;
+
+  const event = snap.val();
+
+  if (event.ownerId === userId) {
+    const joinBtn = document.getElementById("joinBtn");
+    const statBtn = document.getElementById("statBtn");
+
+    if (joinBtn) joinBtn.style.display = "block";
+    if (statBtn) statBtn.style.display = "block";
+  }
+});
+
 </script>
 </body>
 </html>
