@@ -62,9 +62,9 @@
       border-radius: 20px;
       font-size: 13px;
       margin-bottom: 8px;
+      text-transform: uppercase;
     }
 
-    .draft { background: #f1c40f; color: #333; }
     .active { background: #2ecc71; color: white; }
     .ended  { background: #e74c3c; color: white; }
 
@@ -73,6 +73,13 @@
       padding: 8px 12px;
       font-size: 14px;
       cursor: pointer;
+    }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      margin-top: 40px;
+      font-size: 15px;
     }
 
     /* QR MODAL */
@@ -144,14 +151,28 @@
   let currentJoinUrl = "";
 
   function getBaseUrl() {
-    // GitHub Pages kompatibilis
-    return location.origin + location.pathname.replace("/admin/index.html", "");
+    return location.origin + "/team-ski-tracker";
+  }
+
+  function formatDate(v) {
+    if (!v) return "";
+    return new Date(v).toLocaleString("hu-HU");
   }
 
   // ---- ESEMÉNYEK BETÖLTÉSE ----
-  onValue(ref(db, "events"), snap => {
-    const events = snap.val() || {};
+  const eventsRef = ref(db, "events");
+
+  onValue(eventsRef, snap => {
+    const events = snap.val();
+
+    console.log("EVENTS SNAPSHOT:", events);
+
     container.innerHTML = "";
+
+    if (!events) {
+      container.innerHTML = `<div class="empty">Nincs még létrehozott esemény</div>`;
+      return;
+    }
 
     Object.entries(events).forEach(([id, e]) => {
       const div = document.createElement("div");
@@ -159,8 +180,8 @@
 
       div.innerHTML = `
         <h3>${e.name}</h3>
-        <div class="meta">${e.resortName}</div>
-        <div class="meta">${e.startAt} – ${e.endAt}</div>
+        <div class="meta">📍 ${e.resortName}</div>
+        <div class="meta">🕒 ${formatDate(e.startAt)} – ${formatDate(e.endAt)}</div>
         <div class="status ${e.status}">${e.status}</div>
         <div class="actions">
           <button onclick="openMonitor('${id}')">Monitor</button>

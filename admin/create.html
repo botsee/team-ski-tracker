@@ -103,13 +103,13 @@
 
   const btn = document.getElementById("createBtn");
 
-  btn.onclick = async () => {
+  btn.addEventListener("click", async () => {
     const name = document.getElementById("name").value.trim();
-    const resort = document.getElementById("resort").value.trim();
+    const resortName = document.getElementById("resort").value.trim();
     const startAt = document.getElementById("startAt").value;
     const endAt = document.getElementById("endAt").value;
 
-    if (!name || !resort || !startAt || !endAt) {
+    if (!name || !resortName || !startAt || !endAt) {
       alert("Minden mező kitöltése kötelező");
       return;
     }
@@ -121,17 +121,30 @@
 
     btn.disabled = true;
 
-    await push(ref(db, "events"), {
-      name,
-      resortName: resort,
-      startAt,
-      endAt,
-      status: "active",
-      createdAt: Date.now()
-    });
+    try {
+      const eventsRef = ref(db, "events");
 
-    location.href = "./index.html";
-  };
+      const newEventRef = await push(eventsRef, {
+        name,
+        resortName,
+        startAt,
+        endAt,
+        status: "active",
+        createdAt: Date.now()
+      });
+
+      // 👉 DEBUG – fontos visszajelzés
+      console.log("Esemény létrehozva:", newEventRef.key);
+
+      // Vissza az admin eseménylistára
+      location.href = "./index.html";
+
+    } catch (err) {
+      console.error("Hiba esemény létrehozáskor:", err);
+      alert("Hiba történt az esemény létrehozásakor");
+      btn.disabled = false;
+    }
+  });
 </script>
 
 </body>
