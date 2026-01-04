@@ -387,27 +387,54 @@
   });
 
   /* ================= MEMBERS + MARKERS ================= */
-  const OFFLINE_TIMEOUT=15*60*1000;
+const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
-  onValue(ref(db,`members/${eventId}`),snap=>{
-    const data=snap.val()||{};
-    const now=Date.now();
-    Object.entries(data).forEach(([id,m])=>{
-      if(!m.lat||!m.lng) return;
-      const offline=
-        m.manualState==="offline"||
-        (m.lastUpdate&&now-m.lastUpdate>OFFLINE_TIMEOUT);
-      const state=m.activityState||"rest";
-      updateMarker(
-        id,
-        m.lat,
-        m.lng,
-        `<strong>${m.name||"?"}</strong>`,
-        state,
-        offline
-      );
-    });
+onValue(ref(db, `members/${eventId}`), snap => {
+  const list = document.getElementById("members");
+  list.innerHTML = "";
+
+  const data = snap.val() || {};
+  const now = Date.now();
+
+  Object.entries(data).forEach(([id, m]) => {
+    if (!m.lat || !m.lng) return;
+
+    const offline =
+      m.manualState === "offline" ||
+      (m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT);
+
+    const state = m.activityState || "rest";
+
+    // 🔹 MAP MARKER
+    updateMarker(
+      id,
+      m.lat,
+      m.lng,
+      `<strong>${m.name || "?"}</strong>`,
+      state,
+      offline
+    );
+
+    // 🔹 SIDEBAR TAG
+    const div = document.createElement("div");
+    div.className = "member" + (offline ? " offline" : "");
+
+    div.innerHTML = `
+      <div class="member-name">${m.name || "?"}</div>
+      <div class="member-state">
+        ${offline ? "⚪ Offline" : state}
+      </div>
+    `;
+
+    div.onclick = () => {
+      map.setView([m.lat, m.lng], 16, { animate: true });
+      markers[id]?.openPopup();
+    };
+
+    list.appendChild(div);
   });
+});
+
 
   /* ================= STATE ================= */
   window.setState=state=>{
