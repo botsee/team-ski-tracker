@@ -460,6 +460,64 @@ onValue(ref(db, `events/${eventId}`), snap => {
     if (statBtn) statBtn.style.display = "block";
   }
 });
+/* ================= JOIN MODAL ================= */
+window.openJoin = () => {
+  const qrEl = document.getElementById("qr");
+  const linkEl = document.getElementById("joinLink");
+  const modal = document.getElementById("joinModal");
+
+  qrEl.innerHTML = "";
+
+  const link = `${location.origin}/user/map.html?eventId=${eventId}`;
+  linkEl.textContent = link;
+
+  new QRCode(qrEl, {
+    text: link,
+    width: 180,
+    height: 180,
+    colorDark: "#ffffff",
+    colorLight: "transparent"
+  });
+
+  modal.style.display = "flex";
+};
+
+window.closeJoin = () => {
+  document.getElementById("joinModal").style.display = "none";
+};
+
+window.copyJoin = () => {
+  const link = document.getElementById("joinLink").textContent;
+  navigator.clipboard.writeText(link);
+  alert("Link másolva");
+};
+/* ================= STAT MODAL ================= */
+window.openStat = () => {
+  const list = document.getElementById("statList");
+  const modal = document.getElementById("statModal");
+
+  list.innerHTML = "";
+
+  Object.entries(userStats).forEach(([uid, s]) => {
+    const div = document.createElement("div");
+    div.className = "stat-card";
+    div.innerHTML = `
+      <strong>${s.name || uid}</strong><br>
+      🟢 Csúszás: ${(s.skiMs / 60000).toFixed(0)} perc<br>
+      🔵 Lift: ${(s.liftMs / 60000).toFixed(0)} perc<br>
+      🟡 Pihenő: ${(s.restMs / 60000).toFixed(0)} perc<br>
+      📏 Km: ${s.distanceKm.toFixed(2)} km<br>
+      ⚡ Max: ${s.maxSpeed.toFixed(1)} km/h
+    `;
+    list.appendChild(div);
+  });
+
+  modal.style.display = "flex";
+};
+
+window.closeStat = () => {
+  document.getElementById("statModal").style.display = "none";
+};
 
 </script>
 </body>
