@@ -195,10 +195,12 @@
   import { ref, onValue } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  const userId = localStorage.getItem("userId");
-  if (!userId) {
-    alert("Nincs user azonosító");
-    throw new Error("Missing userId");
+  let userId = localStorage.getItem("userId");
+let userName = localStorage.getItem("userName") || "Ismeretlen";
+
+if (!userId) {
+  userId = crypto.randomUUID();
+  localStorage.setItem("userId", userId);
   }
 
   const userLabel=document.getElementById("userLabel");
