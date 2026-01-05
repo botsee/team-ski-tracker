@@ -315,11 +315,20 @@
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  const params=new URLSearchParams(location.search);
-  const eventId=params.get("eventId");
-  const userId=localStorage.getItem("userId");
-  const userName=localStorage.getItem("userName")||"Ismeretlen";
-  if(!eventId||!userId)location.href="../index.html";
+const params = new URLSearchParams(location.search);
+const eventId = params.get("eventId");
+
+let userId = localStorage.getItem("userId");
+let userName = localStorage.getItem("userName") || "Ismeretlen";
+
+if (!userId) {
+  userId = crypto.randomUUID();
+  localStorage.setItem("userId", userId);
+}
+
+if (!eventId) {
+  location.href = "../index.html";
+}
 
   /* ================= MAP INIT ================= */
   const map=L.map("map");
