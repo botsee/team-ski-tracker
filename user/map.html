@@ -332,6 +332,7 @@ if (!eventId) {
 
   /* ================= MAP INIT ================= */
   const map=L.map("map");
+  let lastMembersSnapshot = {};
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
 
   let firstFix=true;
@@ -399,11 +400,14 @@ if (!eventId) {
 const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
 onValue(ref(db, `members/${eventId}`), snap => {
+  lastMembersSnapshot = snap.val() || {};
+
   const list = document.getElementById("members");
   list.innerHTML = "";
 
-  const data = snap.val() || {};
+  const data = lastMembersSnapshot;
   const now = Date.now();
+
 
   Object.entries(data).forEach(([id, m]) => {
     if (!m.lat || !m.lng) return;
