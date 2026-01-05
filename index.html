@@ -215,7 +215,6 @@ if (!userId) {
 
   const userLabel=document.getElementById("userLabel");
   userLabel.textContent="👤 "+(userName||"Ismeretlen")+" ✏️";
-  userLabel.onclick = openNameEditor;
 
 
   const ownedEl=document.getElementById("owned");
@@ -302,6 +301,8 @@ window.openNameEditor = () => {
   nameInput.value = localStorage.getItem("userName") || "";
   nameModal.style.display = "flex";
 };
+userLabel.onclick = openNameEditor;
+
 
 window.saveName = () => {
   const val = nameInput.value.trim();
