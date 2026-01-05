@@ -212,9 +212,7 @@ if (!userId) {
 }
 
 // FIRST RUN – név kötelező
-if (!userName) {
-  setTimeout(openNameEditor, 200);
-}
+
   const userLabel=document.getElementById("userLabel");
   userLabel.textContent="👤 "+(userName||"Ismeretlen")+" ✏️";
   userLabel.onclick = openNameEditor;
@@ -312,6 +310,11 @@ window.saveName = () => {
   nameModal.style.display = "none";
   location.reload();
 };
+/* ===== FIRST RUN TRIGGER (UTOLSÓ SOROK EGYIKE) ===== */
+if (!userName) {
+  setTimeout(openNameEditor, 200);
+}
+
 
 </script>
 
