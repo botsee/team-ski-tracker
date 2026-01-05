@@ -271,19 +271,25 @@ if (!userId) {
 
   let currentJoinLink="";
 
-  window.openJoin=id=>{
-    currentJoinLink=`${location.origin}/user/map.html?eventId=${id}`;
-    document.getElementById("joinLink").textContent=currentJoinLink;
-    document.getElementById("qr").innerHTML="";
-    new QRCode(document.getElementById("qr"),{
-      text:currentJoinLink,
-      width:180,
-      height:180,
-      colorDark:"#ffffff",
-      colorLight:"transparent"
-    });
-    document.getElementById("joinModal").style.display="flex";
-  };
+  window.openJoin = id => {
+  const basePath = location.pathname.replace(/\/[^/]*$/, "");
+  currentJoinLink =
+    location.origin + basePath + `/user/map.html?eventId=${id}`;
+
+  document.getElementById("joinLink").textContent = currentJoinLink;
+  document.getElementById("qr").innerHTML = "";
+
+  new QRCode(document.getElementById("qr"), {
+    text: currentJoinLink,
+    width: 180,
+    height: 180,
+    colorDark: "#ffffff",
+    colorLight: "transparent"
+  });
+
+  document.getElementById("joinModal").style.display = "flex";
+};
+
 
   window.closeJoin=()=>{
     document.getElementById("joinModal").style.display="none";

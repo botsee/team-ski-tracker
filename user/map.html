@@ -477,7 +477,10 @@ window.openJoin = () => {
 
   qrEl.innerHTML = "";
 
-  const link = `${location.origin}/user/map.html?eventId=${eventId}`;
+  const basePath = location.pathname.replace(/\/[^/]*$/, "");
+  const link =
+    location.origin + basePath + `/user/map.html?eventId=${eventId}`;
+
   linkEl.textContent = link;
 
   new QRCode(qrEl, {
@@ -487,7 +490,6 @@ window.openJoin = () => {
     colorDark: "#ffffff",
     colorLight: "transparent"
   });
-
   modal.style.display = "flex";
 };
 
