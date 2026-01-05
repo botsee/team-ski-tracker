@@ -178,7 +178,15 @@
   <h2>CSATLAKOZOTT ESEMÉNYEK</h2>
   <div id="joined"></div>
 </main>
-
+<!-- NAME MODAL -->
+<div id="nameModal" class="modal">
+  <div class="modal-content">
+    <strong>Név megadása</strong>
+    <input id="nameInput" placeholder="Pl. Balázs"
+      style="width:100%;margin-top:12px;padding:10px;border-radius:10px;border:none;">
+    <button class="copy" onclick="saveName()">Mentés</button>
+  </div>
+</div>
 <!-- JOIN MODAL -->
 <div id="joinModal" class="modal">
   <div class="modal-content">
@@ -205,11 +213,12 @@ if (!userId) {
 
 // FIRST RUN – név kötelező
 if (!userName) {
+  setTimeout(openNameEditor, 200);
 }
-
   const userLabel=document.getElementById("userLabel");
   userLabel.textContent="👤 "+(userName||"Ismeretlen")+" ✏️";
-  userLabel.onclick=()=>location.reload();
+  userLabel.onclick = openNameEditor;
+
 
   const ownedEl=document.getElementById("owned");
   const joinedEl=document.getElementById("joined");
@@ -287,6 +296,23 @@ if (!userName) {
     navigator.clipboard.writeText(currentJoinLink);
     alert("Link másolva");
   };
+  /* ================= NAME MODAL ================= */
+const nameModal = document.getElementById("nameModal");
+const nameInput = document.getElementById("nameInput");
+
+window.openNameEditor = () => {
+  nameInput.value = localStorage.getItem("userName") || "";
+  nameModal.style.display = "flex";
+};
+
+window.saveName = () => {
+  const val = nameInput.value.trim();
+  if (!val) return;
+  localStorage.setItem("userName", val);
+  nameModal.style.display = "none";
+  location.reload();
+};
+
 </script>
 
 </body>
