@@ -146,7 +146,12 @@
   import { skiResorts } from "../js/skiResorts.js";
 
  let userId = localStorage.getItem("userId");
-let userName = localStorage.getItem("userName") || "Ismeretlen";
+if (!userName) {
+  alert("Először add meg a neved");
+  location.href = "../index.html";
+  throw new Error("Missing userName");
+}
+
 
 if (!userId) {
   userId = crypto.randomUUID();
@@ -166,6 +171,7 @@ if (!userId) {
   btn.onclick = async () => {
     const name = document.getElementById("name").value.trim();
     const resortId = resortSelect.value;
+    const resort = skiResorts[resortId];
     const startAt = document.getElementById("startAt").value;
     const endAt = document.getElementById("endAt").value;
 
@@ -184,16 +190,18 @@ if (!userId) {
     const eventRef = push(ref(db, "events"));
     const eventId = eventRef.key;
 
-    await set(eventRef, {
-      name,
-      resortId,
-      ownerId: userId,
-      ownerName: userName,
-      startAt,
-      endAt,
-      status: "active",
-      createdAt: Date.now()
-    });
+   await set(eventRef, {
+  name,
+  resortId,
+  resortName: resort.name,
+  resortCountry: resort.country,
+  ownerId: userId,
+  ownerName: userName,
+  startAt,
+  endAt,
+  status: "active",
+  createdAt: Date.now()
+});
 
     await set(ref(db, `members/${eventId}/${userId}`), {
       name: userName,
