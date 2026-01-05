@@ -171,7 +171,13 @@ if (!userId) {
   btn.onclick = async () => {
     const name = document.getElementById("name").value.trim();
     const resortId = resortSelect.value;
-    const resort = skiResorts[resortId];
+    const resort = Object.values(skiResorts)
+  .find(r => r.id === resortId);
+if (!resort) {
+  alert("Ismeretlen síterep");
+  btn.disabled = false;
+  return;
+}
     const startAt = document.getElementById("startAt").value;
     const endAt = document.getElementById("endAt").value;
 
