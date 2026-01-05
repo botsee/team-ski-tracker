@@ -533,6 +533,37 @@ window.openStat = () => {
 window.closeStat = () => {
   document.getElementById("statModal").style.display = "none";
 };
+/* ================= OWNER STAT MODAL ================= */
+
+window.openStat = () => {
+  const list = document.getElementById("statList");
+  list.innerHTML = "";
+
+  Object.values(lastMembersSnapshot).forEach(m => {
+    const div = document.createElement("div");
+    div.className = "stat-card";
+
+    const last =
+      m.lastUpdate
+        ? `${Math.floor((Date.now() - m.lastUpdate) / 60000)} perce`
+        : "—";
+
+    div.innerHTML = `
+      <strong>${m.name || "?"}</strong><br/>
+      Állapot: ${m.activityState || "—"}<br/>
+      Utolsó frissítés: ${last}
+    `;
+
+    list.appendChild(div);
+  });
+
+  document.getElementById("statModal").style.display = "flex";
+};
+
+window.closeStat = () => {
+  document.getElementById("statModal").style.display = "none";
+};
+
 
 </script>
 </body>
