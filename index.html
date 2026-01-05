@@ -205,11 +205,9 @@ if (!userId) {
 
 // FIRST RUN – név kötelező
 if (!userName) {
-  openNameEditor();
 }
 
   const userLabel=document.getElementById("userLabel");
-  let userName=localStorage.getItem("userName");
   userLabel.textContent="👤 "+(userName||"Ismeretlen")+" ✏️";
   userLabel.onclick=()=>location.reload();
 
