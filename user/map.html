@@ -49,6 +49,20 @@
       font-size:14px;
     }
 
+    /* ===== ACTIVITY BADGE ===== */
+    .activity{
+      display:inline-block;
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:600;
+      margin-top:6px;
+    }
+    .activity.skiing{ background:#1abc9c; color:#042f26; }
+    .activity.lift  { background:#3498db; color:#041f33; }
+    .activity.rest  { background:#f1c40f; color:#3a2f04; }
+    .activity.idle  { background:#7f8c8d; color:#1f2a2b; }
+
     .section-title{
       font-size:13px;
       color:#9aa4b2;
@@ -93,7 +107,6 @@
       width:100vw;
       position:relative;
     }
-
     #map{ height:100%; width:100%; }
 
     #closeMap{
@@ -121,8 +134,8 @@
   <button class="primary-btn" id="startBtn">▶️ Mérés indítása</button>
 
   <div class="state-box">
-    Aktuális állapot: <strong id="activityLabel">—</strong><br/>
-    Kontextus: —
+    Aktuális állapot:<br/>
+    <div id="activityBadge" class="activity idle">⚪ Készenlét</div>
   </div>
 
   <div class="section-title">Tagok</div>
@@ -173,8 +186,8 @@
 
   /* ================= MEASUREMENT ================= */
   let measurementActive = false;
-
   const startBtn = document.getElementById("startBtn");
+
   startBtn.onclick = () => {
     measurementActive = !measurementActive;
     startBtn.textContent = measurementActive
@@ -190,6 +203,21 @@
   let lastActivityChange = Date.now();
 
   const STATE_CONFIRM_TIME = 8000;
+
+  function updateActivityUI(state){
+    const el = document.getElementById("activityBadge");
+    if (!el) return;
+
+    const map = {
+      skiing: "🟢 Csúszás",
+      lift:   "🔵 Felvonó",
+      rest:   "🟡 Pihenő",
+      idle:   "⚪ Készenlét"
+    };
+
+    el.className = "activity " + state;
+    el.textContent = map[state] || "—";
+  }
 
   /* ================= STATS ================= */
   let skiingMs = 0, liftMs = 0, restMs = 0;
@@ -241,8 +269,7 @@
 
       currentActivity = candidate;
       lastActivityChange = now;
-      document.getElementById("activityLabel").textContent = candidate;
-      console.log("Állapot váltás →", candidate);
+      updateActivityUI(candidate);
     }
   }
 
@@ -324,7 +351,9 @@
   }
 
   window.openStat = () => alert(
-    `Csúszás: ${Math.round(skiingMs/60000)} perc\nFelvonó: ${Math.round(liftMs/60000)} perc\nPihenő: ${Math.round(restMs/60000)} perc`
+    `🟢 Csúszás: ${Math.round(skiingMs/60000)} perc\n` +
+    `🔵 Felvonó: ${Math.round(liftMs/60000)} perc\n` +
+    `🟡 Pihenő: ${Math.round(restMs/60000)} perc`
   );
 </script>
 
