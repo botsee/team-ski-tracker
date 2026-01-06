@@ -232,6 +232,9 @@
   let totalDistanceKm = 0, maxSpeedKmh = 0;
   let lastGpsPoint = null;
   let lastAltitude = null;
+  let currentTrack = null;
+let lastTrackState = null;
+
 
   function haversine(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -303,6 +306,12 @@
       updateActivityUI(candidate);
     }
   }
+function getTrackColor(state) {
+  if (state === "skiing") return "#1abc9c"; // zöld
+  if (state === "lift")   return "#3498db"; // kék
+  if (state === "rest")   return "#f1c40f"; // sárga
+  return "#7f8c8d"; // idle / egyéb
+}
 
   /* ===== AUTH + MAP ===== */
   const auth = getAuth();
@@ -356,6 +365,24 @@
       }
 
       const candidate = detectCandidateState({ speedKmh, deltaAlt });
+      // ===== TRACK DRAW =====
+if (measurementActive) {
+  if (currentActivity !== lastTrackState) {
+    // új szakasz állapotváltáskor
+    currentTrack = L.polyline([], {
+      color: getTrackColor(currentActivity),
+      weight: 4,
+      opacity: 0.9
+    }).addTo(map);
+
+    lastTrackState = currentActivity;
+  }
+
+  if (currentTrack) {
+    currentTrack.addLatLng([latitude, longitude]);
+  }
+}
+
       updateActivityState(candidate);
       updateDebug({
         state: currentActivity,
