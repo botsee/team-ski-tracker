@@ -139,9 +139,10 @@
 <!-- ================= DASHBOARD ================= -->
 <div id="dashboardView">
 
-  <button class="primary-btn">
-    ▶️ Mérés indítása
-  </button>
+ <button class="primary-btn" id="startBtn">
+  ▶️ Mérés indítása
+</button>
+
 
   <div class="state-box">
     Aktuális állapot: <strong>Automatikus</strong><br/>
@@ -174,6 +175,10 @@
   const eventId = params.get("eventId");
   const userId = localStorage.getItem("userId");
   const userName = localStorage.getItem("userName") || "Ismeretlen";
+  /* ================= MEASUREMENT STATE ================= */
+let measurementActive = false;
+let measurementStartedAt = null;
+
 
   if (!eventId || !userId) {
     location.href = "../index.html";
@@ -195,6 +200,31 @@
   };
 
   window.goHome = () => location.href = "../index.html";
+/* ================= START / STOP BUTTON ================= */
+const startBtn = document.getElementById("startBtn");
+
+function updateStartButton() {
+  if (measurementActive) {
+    startBtn.textContent = "⏹️ Mérés leállítása";
+    startBtn.style.background = "#e74c3c";
+  } else {
+    startBtn.textContent = "▶️ Mérés indítása";
+    startBtn.style.background = "#4da3ff";
+  }
+}
+
+startBtn.onclick = () => {
+  measurementActive = !measurementActive;
+
+  if (measurementActive) {
+    measurementStartedAt = Date.now();
+    console.log("▶️ Mérési session indult");
+  } else {
+    console.log("⏹️ Mérési session leállt");
+  }
+
+  updateStartButton();
+};
 
   /* ===== MAP ===== */
   const map = L.map("map");
