@@ -444,15 +444,19 @@ lastGpsPoint = {
   return `${m}:${s.toString().padStart(2,"0")}`;
 }
   /* ===== STAT MODAL ===== */
-const statModal = document.getElementById("statModal");
-
 window.openStat = () => {
+  const statModal = document.getElementById("statModal");
   const statEl = document.getElementById("statContent");
 
-  const distanceKm = (distanceMeters / 1000).toFixed(2);
+  // A belső statisztikák a fenti globális változókból jönnek
+  const distanceKm = totalDistanceKm.toFixed(2);
+  const skiTimeMs = skiingMs;
+  const liftTimeMs = liftMs;
+  const restTimeMs = restMs;
+
   const avgSpeed =
     skiTimeMs > 0
-      ? ((distanceMeters / 1000) / (skiTimeMs / 3600000)).toFixed(1)
+      ? (totalDistanceKm / (skiTimeMs / 3600000)).toFixed(1)
       : "—";
 
   statEl.innerHTML = `
@@ -465,12 +469,17 @@ window.openStat = () => {
     <div>⚡ Max seb.: <strong>${maxSpeedKmh.toFixed(1)} km/h</strong></div>
   `;
 
-  statModal.style.display = "flex";
+  if (statModal) {
+    statModal.style.display = "flex";
+  }
 };
 
 
 window.closeStat = () => {
-  statModal.style.display = "none";
+  const statModal = document.getElementById("statModal");
+  if (statModal) {
+    statModal.style.display = "none";
+  }
 };
 
 </script>
