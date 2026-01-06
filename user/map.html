@@ -419,6 +419,11 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 // globális referencia későbbre
 window._miniMap = miniMap;
+setTimeout(() => {
+  miniMap.invalidateSize();
+  miniMap.setZoom(miniMap.getZoom());
+}, 100);
+
 
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -448,18 +453,31 @@ window._miniMap = miniMap;
     let miniMapMarker = null;
 
     navigator.geolocation.watchPosition(pos => {
-      const { latitude, longitude, altitude, speed } = pos.coords;
-      const speedKmh = speed ? speed * 3.6 : 0;
-      const deltaAlt = lastAltitude != null && altitude != null
-        ? altitude - lastAltitude
-        : null;
+  const { latitude, longitude, altitude, speed } = pos.coords;
+  const speedKmh = speed ? speed * 3.6 : 0;
+  const deltaAlt = lastAltitude != null && altitude != null
+    ? altitude - lastAltitude
+    : null;
 
-      if (firstFix) {
-        map.setView([latitude, longitude], 15);
-        window._miniMap.setView([latitude, longitude], 14);
-        firstFix = false;
-      }
-      window._miniMap.setView([latitude, longitude]);
+  if (firstFix) {
+    map.setView([latitude, longitude], 15);
+
+    window._miniMap.setView(
+      [latitude, longitude],
+      14,
+      { animate: false }
+    );
+    window._miniMap.invalidateSize();
+
+    firstFix = false;
+  } else {
+    // NEM zoomolunk, csak követjük a pozíciót
+    window._miniMap.panTo(
+      [latitude, longitude],
+      { animate: false }
+    );
+  }
+});
 
 
       if (!selfMarker) {
