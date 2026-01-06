@@ -434,12 +434,40 @@ lastGpsPoint = {
       list.appendChild(div);
     });
   });
+  function formatTime(ms){
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  if (h > 0) return `${h}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
   /* ===== STAT MODAL ===== */
 const statModal = document.getElementById("statModal");
 
 window.openStat = () => {
+  const statEl = document.getElementById("statContent");
+
+  const distanceKm = (distanceMeters / 1000).toFixed(2);
+  const avgSpeed =
+    skiTimeMs > 0
+      ? ((distanceMeters / 1000) / (skiTimeMs / 3600000)).toFixed(1)
+      : "—";
+
+  statEl.innerHTML = `
+    <div>🟢 Csúszás: <strong>${formatTime(skiTimeMs)}</strong></div>
+    <div>🔵 Felvonó: <strong>${formatTime(liftTimeMs)}</strong></div>
+    <div>🟡 Pihenő: <strong>${formatTime(restTimeMs)}</strong></div>
+    <hr style="margin:10px 0;border-color:#333">
+    <div>📏 Távolság: <strong>${distanceKm} km</strong></div>
+    <div>🚀 Átlag seb.: <strong>${avgSpeed} km/h</strong></div>
+    <div>⚡ Max seb.: <strong>${maxSpeedKmh.toFixed(1)} km/h</strong></div>
+  `;
+
   statModal.style.display = "flex";
 };
+
 
 window.closeStat = () => {
   statModal.style.display = "none";
