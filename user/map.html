@@ -145,9 +145,10 @@
 
 
   <div class="state-box">
-    Aktuális állapot: <strong>Automatikus</strong><br/>
-    Kontextus: —
-  </div>
+  Aktuális állapot: <strong id="activityLabel">—</strong><br/>
+  Kontextus: —
+</div>
+
 
   <div class="section-title">Tagok</div>
   <div id="members"></div>
@@ -183,6 +184,11 @@ let measurementStartedAt = null;
   if (!eventId || !userId) {
     location.href = "../index.html";
   }
+/* ================= ACTIVITY STATE ================= */
+let currentActivity = "idle"; // skiing | lift | rest | idle
+let lastAltitude = null;
+let lastActivityChange = Date.now();
+let stillSince = null;
 
   /* ===== VIEW SWITCH ===== */
   const dashboardView = document.getElementById("dashboardView");
@@ -255,11 +261,59 @@ startBtn.onclick = () => {
       }).addTo(map).bindPopup(name);
     }
   }
+/* ================= AUTO ACTIVITY DETECTION ================= */
+function detectActivity({ altitude, speed }) {
+  const now = Date.now();
+
+  if (!measurementActive) {
+    currentActivity = "idle";
+    return;
+  }
+
+  // sebesség m/s → km/h
+  const speedKmh = speed != null ? speed * 3.6 : 0;
+
+  if (speedKmh < 1) {
+    if (!stillSince) stillSince = now;
+    if (now - stillSince > 15 * 60 * 1000) {
+      setActivity("rest");
+    }
+    return;
+  } else {
+    stillSince = null;
+  }
+
+  if (lastAltitude != null) {
+    const deltaAlt = altitude - lastAltitude;
+
+    if (deltaAlt < -2 && speedKmh > 5) {
+      setActivity("skiing");
+    } else if (deltaAlt > 2 && speedKmh < 15) {
+      setActivity("lift");
+    }
+  }
+
+  lastAltitude = altitude;
+}
+
+function setActivity(next) {
+  if (currentActivity === next) return;
+
+  currentActivity = next;
+  lastActivityChange = Date.now();
+
+  console.log("⛷️ Állapot:", next);
+
+  // 🔹 UI frissítés
+  document.getElementById("activityLabel").textContent = next;
+}
+
 
   /* ===== GPS ===== */
   navigator.geolocation.watchPosition(pos=>{
-    const {latitude, longitude} = pos.coords;
-    const now = Date.now();
+  const {latitude, longitude, altitude, speed} = pos.coords;
+  const now = Date.now();
+
 
     if(firstFix){
       map.setView([latitude, longitude], 15);
@@ -273,6 +327,7 @@ startBtn.onclick = () => {
     }else{
       selfMarker.setLatLng([latitude, longitude]);
     }
+detectActivity({ altitude, speed });
 
     update(ref(db, `members/${eventId}/${userId}`), {
       name: userName,
