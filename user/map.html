@@ -121,6 +121,11 @@
       border-radius:10px;
       cursor:pointer;
     }
+    #debugToggleBtn{
+  position:relative;
+  z-index:4000;
+}
+
   </style>
 </head>
 
@@ -145,7 +150,8 @@
     <div class="icon-btn" onclick="showMap()">🗺️</div>
     <div class="icon-btn" onclick="openStat()">📊</div>
     <div class="icon-btn" onclick="goHome()">⬅️</div>
-    <div class="icon-btn" onclick="toggleDebug()">🔧</div>
+   <div class="icon-btn" id="debugToggleBtn" onclick="toggleDebug()">🔧</div>
+
 
   </div>
 </div>
