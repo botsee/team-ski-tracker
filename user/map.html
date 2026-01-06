@@ -125,6 +125,53 @@
   position:relative;
   z-index:4000;
 }
+.event-meta{
+  font-size:12px;
+  color:#9aa4b2;
+  margin-bottom:10px;
+}
+
+.mini-map-wrapper{
+  position:relative;
+  height:22vh;
+  margin:14px 0;
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+}
+
+#miniMap{
+  height:100%;
+  width:100%;
+}
+
+.mini-map-overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:10px;
+  font-size:13px;
+  color:#fff;
+  pointer-events:none;
+}
+
+.state-actions{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:16px;
+}
+
+.state-actions button{
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:rgba(255,255,255,.08);
+  color:#e6e9ef;
+}
 
   </style>
 </head>
@@ -135,24 +182,46 @@
   <strong>Esemény</strong>
 </header>
 
-<div id="dashboardView">
-  <button class="primary-btn" id="startBtn">▶️ Mérés indítása</button>
-
-  <div class="state-box">
-    Aktuális állapot:<br/>
-    <div id="activityBadge" class="activity idle">⚪ Készenlét</div>
-  </div>
-
-  <div class="section-title">Tagok</div>
-  <div id="members"></div>
-
-  <div class="bottom-actions">
-    <div class="icon-btn" onclick="showMap()">🗺️</div>
-    <div class="icon-btn" onclick="openStat()">📊</div>
-    <div class="icon-btn" onclick="goHome()">⬅️</div>
-    <div class="icon-btn" id="debugToggleBtn" onclick="toggleDebug()">🔧</div>
+<!-- ===== EVENT META ===== -->
+<div class="event-meta">
+  <div id="eventInfo">
+    Esemény · Sítér · 09:00–16:30 · 0/0 aktív
   </div>
 </div>
+
+<!-- ===== START / STATE ===== -->
+<button class="primary-btn" id="startBtn">▶️ Mérés indítása</button>
+
+<div class="state-box">
+  Saját állapot: <strong id="activityLabel">—</strong>
+</div>
+
+<!-- ===== MINI MAP ===== -->
+<div class="mini-map-wrapper" onclick="showMap()">
+  <div id="miniMap"></div>
+  <div class="mini-map-overlay">🗺️ Térkép nagyítása</div>
+</div>
+
+<!-- ===== MANUAL STATE (HELYKÉSZEN) ===== -->
+<div class="section-title">Állapot váltás</div>
+<div class="state-actions">
+  <button>🤖 Auto</button>
+  <button>🛑 Pihenő</button>
+  <button>⚫ Offline</button>
+</div>
+
+<!-- ===== MEMBERS ===== -->
+<div class="section-title">Tagok</div>
+<div id="members"></div>
+
+<!-- ===== ACTIONS ===== -->
+<div class="bottom-actions">
+  <div class="icon-btn" onclick="showMap()">🗺️</div>
+  <div class="icon-btn" onclick="openStat()">📊</div>
+  <div class="icon-btn">🔗</div>
+  <div class="icon-btn" onclick="goHome()">⬅️</div>
+</div>
+
 
 <div id="mapView">
   <button id="closeMap" onclick="showDashboard()">⬅️ Vissza</button>
@@ -332,10 +401,25 @@ function getTrackColor(state) {
     window._mapInstance = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+// ===== MINI MAP =====
+const miniMap = L.map("miniMap", {
+  zoomControl: false,
+  attributionControl: false,
+  dragging: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false
+});
 
-    let firstFix = true;
-    let selfMarker = null;
-    const markers = {};
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 18
+}).addTo(miniMap);
+
+  if (firstFix) {
+  map.setView([latitude, longitude], 15);
+  miniMap.setView([latitude, longitude], 14);
+  firstFix = false;
+}
+
 
     const markerIcon = color =>
       L.divIcon({
