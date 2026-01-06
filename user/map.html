@@ -247,15 +247,15 @@
   };
   
   window.showDashboard = () => {
-    mapView.style.display = "none";
-    document.body.style.overflow = "auto";
+  mapView.style.display = "none";
+  dashboardView.style.display = "block";
 
-    setTimeout(() => {
-      if (window._miniMap) {
-        window._miniMap.invalidateSize();
-      }
-    }, 50);
-  };
+  setTimeout(() => {
+    if (window._miniMap) {
+      window._miniMap.invalidateSize();
+    }
+  }, 50);
+};
   window.goHome = () => location.href = "../index.html";
 
   const params = new URLSearchParams(location.search);
@@ -404,6 +404,22 @@ function getTrackColor(state) {
   function initMapApp() {
     const map = L.map("map");
     window._mapInstance = map;
+    // ===== MINI MAP INIT (ELSŐ BETÖLTÉSKOR) =====
+const miniMap = L.map("miniMap", {
+  zoomControl: false,
+  attributionControl: false,
+  dragging: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false
+});
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 18
+}).addTo(miniMap);
+
+// globális referencia későbbre
+window._miniMap = miniMap;
+
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
