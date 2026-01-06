@@ -139,16 +139,14 @@
 <!-- ================= DASHBOARD ================= -->
 <div id="dashboardView">
 
- <button class="primary-btn" id="startBtn">
-  ▶️ Mérés indítása
-</button>
-
+  <button class="primary-btn" id="startBtn">
+    ▶️ Mérés indítása
+  </button>
 
   <div class="state-box">
-  Aktuális állapot: <strong id="activityLabel">—</strong><br/>
-  Kontextus: —
-</div>
-
+    Aktuális állapot: <strong id="activityLabel">—</strong><br/>
+    Kontextus: —
+  </div>
 
   <div class="section-title">Tagok</div>
   <div id="members"></div>
@@ -177,6 +175,28 @@
     onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+  /* ===== VIEW SWITCH (GLOBAL) ===== */
+  const dashboardView = document.getElementById("dashboardView");
+  const mapView = document.getElementById("mapView");
+
+  window.showMap = () => {
+    dashboardView.style.display = "none";
+    mapView.style.display = "block";
+
+    if (window._mapInstance) {
+      window._mapInstance.invalidateSize();
+    }
+  };
+
+  window.showDashboard = () => {
+    mapView.style.display = "none";
+    dashboardView.style.display = "block";
+  };
+
+  window.goHome = () => {
+    location.href = "../index.html";
+  };
+
   /* ===== PARAMS ===== */
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
@@ -184,6 +204,136 @@
   if (!eventId) {
     alert("Hiányzó esemény azonosító");
     location.href = "../index.html";
+  }
+
+  /* ================= MEASUREMENT STATE ================= */
+  let measurementActive = false;
+  let measurementStartedAt = null;
+
+  /* ================= ACTIVITY STATE ================= */
+  let currentActivity = "idle"; // skiing | lift | rest | idle
+  let lastAltitude = null;
+  let lastActivityChange = Date.now();
+  let stillSince = null;
+
+  /* ================= STATS ================= */
+  let totalDistanceKm = 0;
+  let maxSpeedKmh = 0;
+
+  let skiingMs = 0;
+  let liftMs = 0;
+  let restMs = 0;
+
+  let lastGpsPoint = null;
+
+  /* ================= START / STOP BUTTON ================= */
+  const startBtn = document.getElementById("startBtn");
+
+  function updateStartButton() {
+    if (measurementActive) {
+      startBtn.textContent = "⏹️ Mérés leállítása";
+      startBtn.style.background = "#e74c3c";
+    } else {
+      startBtn.textContent = "▶️ Mérés indítása";
+      startBtn.style.background = "#4da3ff";
+    }
+  }
+
+  startBtn.onclick = () => {
+    measurementActive = !measurementActive;
+
+    if (measurementActive) {
+      measurementStartedAt = Date.now();
+      console.log("▶️ Mérési session indult");
+    } else {
+      console.log("⏹️ Mérési session leállt");
+    }
+
+    updateStartButton();
+  };
+
+  /* ===== HELPER: TÁVOLSÁG ===== */
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const toRad = x => x * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lat2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  /* ================= AUTO ACTIVITY DETECTION ================= */
+  function detectActivity({ altitude, speed }) {
+    const now = Date.now();
+
+    if (!measurementActive) {
+      currentActivity = "idle";
+      return;
+    }
+
+    const speedKmh = speed != null ? speed * 3.6 : 0;
+
+    if (speedKmh < 1) {
+      if (!stillSince) stillSince = now;
+      if (now - stillSince > 15 * 60 * 1000) {
+        setActivity("rest");
+      }
+      return;
+    } else {
+      stillSince = null;
+    }
+
+    if (lastAltitude != null && altitude != null) {
+      const deltaAlt = altitude - lastAltitude;
+
+      if (deltaAlt < -2 && speedKmh > 5) {
+        setActivity("skiing");
+      } else if (deltaAlt > 2 && speedKmh < 15) {
+        setActivity("lift");
+      }
+    }
+
+    lastAltitude = altitude;
+  }
+
+  function setActivity(next) {
+    if (currentActivity === next) return;
+
+    const now = Date.now();
+    const delta = now - lastActivityChange;
+
+    if (measurementActive) {
+      if (currentActivity === "skiing") skiingMs += delta;
+      if (currentActivity === "lift") liftMs += delta;
+      if (currentActivity === "rest") restMs += delta;
+    }
+
+    currentActivity = next;
+    lastActivityChange = now;
+
+    const label = document.getElementById("activityLabel");
+    if (label) {
+      label.textContent = next;
+    }
+
+    console.log("⛷️ Állapot:", next);
+  }
+
+  function formatTime(ms){
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+
+    if (h > 0) return `${h}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+    return `${m}:${s.toString().padStart(2,"0")}`;
   }
 
   /* ===== AUTH ===== */
@@ -197,7 +347,7 @@
       userId = user.uid;
       console.log("MAP AUTH OK:", userId);
 
-      initMapApp(); // ⬅️ CSAK ITT indul a teljes app
+      initMapApp();
     } else {
       signInAnonymously(auth).catch(err => {
         console.error("Auth hiba:", err);
@@ -212,6 +362,8 @@
 
     /* ===== MAP ===== */
     const map = L.map("map");
+    window._mapInstance = map;
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18
     }).addTo(map);
@@ -243,7 +395,7 @@
 
     /* ===== GPS ===== */
     navigator.geolocation.watchPosition(pos => {
-      const { latitude, longitude } = pos.coords;
+      const { latitude, longitude, altitude, speed } = pos.coords;
       const now = Date.now();
 
       if (firstFix) {
@@ -259,12 +411,40 @@
         selfMarker.setLatLng([latitude, longitude]);
       }
 
-      update(ref(db, `members/${eventId}/${userId}`), {
-        name: userName,
+      detectActivity({ altitude, speed });
+
+      if (measurementActive && currentActivity === "skiing") {
+        if (lastGpsPoint) {
+          const dKm = haversine(
+            lastGpsPoint.lat,
+            lastGpsPoint.lng,
+            latitude,
+            longitude
+          );
+
+          totalDistanceKm += dKm;
+
+          if (speed != null) {
+            const speedKmh = speed * 3.6;
+            maxSpeedKmh = Math.max(maxSpeedKmh, speedKmh);
+          }
+        }
+      }
+
+      lastGpsPoint = {
         lat: latitude,
         lng: longitude,
-        lastUpdate: now
-      });
+        ts: now
+      };
+
+      if (userId) {
+        update(ref(db, `members/${eventId}/${userId}`), {
+          name: userName,
+          lat: latitude,
+          lng: longitude,
+          lastUpdate: now
+        });
+      }
     }, err => {
       console.warn("GPS hiba:", err);
     }, {
@@ -311,305 +491,43 @@
       });
     });
   }
-</script>
 
-  /* ================= MEASUREMENT STATE ================= */
-let measurementActive = false;
-let measurementStartedAt = null;
-
-
-  if (!eventId || !userId) {
-    location.href = "../index.html";
-  }
-/* ================= ACTIVITY STATE ================= */
-let currentActivity = "idle"; // skiing | lift | rest | idle
-let lastAltitude = null;
-let lastActivityChange = Date.now();
-let stillSince = null;
-/* ================= STATS ================= */
-let totalDistanceKm = 0;
-let maxSpeedKmh = 0;
-
-let skiingMs = 0;
-let liftMs = 0;
-let restMs = 0;
-
-let lastGpsPoint = null;
-let lastStatTimestamp = Date.now();
-
-  /* ===== VIEW SWITCH ===== */
-  const dashboardView = document.getElementById("dashboardView");
-  const mapView = document.getElementById("mapView");
-
-  window.showMap = () => {
-    dashboardView.style.display = "none";
-    mapView.style.display = "block";
-    map.invalidateSize();
-  };
-
-  window.showDashboard = () => {
-    mapView.style.display = "none";
-    dashboardView.style.display = "block";
-  };
-
-  window.goHome = () => location.href = "../index.html";
-/* ================= START / STOP BUTTON ================= */
-const startBtn = document.getElementById("startBtn");
-
-function updateStartButton() {
-  if (measurementActive) {
-    startBtn.textContent = "⏹️ Mérés leállítása";
-    startBtn.style.background = "#e74c3c";
-  } else {
-    startBtn.textContent = "▶️ Mérés indítása";
-    startBtn.style.background = "#4da3ff";
-  }
-}
-
-startBtn.onclick = () => {
-  measurementActive = !measurementActive;
-
-  if (measurementActive) {
-    measurementStartedAt = Date.now();
-    console.log("▶️ Mérési session indult");
-  } else {
-    console.log("⏹️ Mérési session leállt");
-  }
-
-  updateStartButton();
-};
-
-  /* ===== MAP ===== */
-  const map = L.map("map");
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18
-  }).addTo(map);
-
-  let firstFix = true;
-  let selfMarker = null;
-  const markers = {};
-
-  function markerIcon(color){
-    return L.divIcon({
-      className:"",
-      html:`<div style="width:14px;height:14px;border-radius:50%;
-        background:${color};border:2px solid white;"></div>`,
-      iconSize:[14,14],
-      iconAnchor:[7,7]
-    });
-  }
-
-  function updateMarker(id, lat, lng, name){
-    if(markers[id]){
-      markers[id].setLatLng([lat,lng]);
-    }else{
-      markers[id] = L.marker([lat,lng],{
-        icon:markerIcon("#4da3ff")
-      }).addTo(map).bindPopup(name);
-    }
-  }
-  function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371; // km
-  const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-    Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/* ================= AUTO ACTIVITY DETECTION ================= */
-function detectActivity({ altitude, speed }) {
-  const now = Date.now();
-
-  if (!measurementActive) {
-    currentActivity = "idle";
-    return;
-  }
-
-  // sebesség m/s → km/h
-  const speedKmh = speed != null ? speed * 3.6 : 0;
-
-  if (speedKmh < 1) {
-    if (!stillSince) stillSince = now;
-    if (now - stillSince > 15 * 60 * 1000) {
-      setActivity("rest");
-    }
-    return;
-  } else {
-    stillSince = null;
-  }
-
-  if (lastAltitude != null) {
-    const deltaAlt = altitude - lastAltitude;
-
-    if (deltaAlt < -2 && speedKmh > 5) {
-      setActivity("skiing");
-    } else if (deltaAlt > 2 && speedKmh < 15) {
-      setActivity("lift");
-    }
-  }
-
-  lastAltitude = altitude;
-}
-
-function setActivity(next) {
-  if (currentActivity === next) return;
-
-  const now = Date.now();
-  const delta = now - lastActivityChange;
-
-  // ⏱️ idő hozzáadása az előző állapothoz
-  if (measurementActive) {
-    if (currentActivity === "skiing") skiingMs += delta;
-    if (currentActivity === "lift") liftMs += delta;
-    if (currentActivity === "rest") restMs += delta;
-  }
-
-  currentActivity = next;
-  lastActivityChange = now;
-
-  const label = document.getElementById("activityLabel");
-if (label) {
-  label.textContent = next;
-}
-
-  console.log("⛷️ Állapot:", next);
-}
-
-  /* ===== GPS ===== */
-  navigator.geolocation.watchPosition(pos=>{
-  const {latitude, longitude, altitude, speed} = pos.coords;
-  const now = Date.now();
-
-
-    if(firstFix){
-      map.setView([latitude, longitude], 15);
-      firstFix = false;
-    }
-
-    if(!selfMarker){
-      selfMarker = L.marker([latitude, longitude],{
-        icon:markerIcon("#2ecc71")
-      }).addTo(map).bindPopup("Te");
-    }else{
-      selfMarker.setLatLng([latitude, longitude]);
-    }
-detectActivity({ altitude, speed });
-// 📏 TÁVOLSÁG + SEBESSÉG (csak csúszáskor)
-if (measurementActive && currentActivity === "skiing") {
-  if (lastGpsPoint) {
-    const dKm = haversine(
-      lastGpsPoint.lat,
-      lastGpsPoint.lng,
-      latitude,
-      longitude
-    );
-
-    totalDistanceKm += dKm;
-
-    if (speed != null) {
-      const speedKmh = speed * 3.6;
-      maxSpeedKmh = Math.max(maxSpeedKmh, speedKmh);
-    }
-  }
-}
-
-lastGpsPoint = {
-  lat: latitude,
-  lng: longitude,
-  ts: now
-};
-
-    update(ref(db, `members/${eventId}/${userId}`), {
-      name: userName,
-      lat: latitude,
-      lng: longitude,
-      lastUpdate: now
-    });
-  });
-
-  /* ===== MEMBERS ===== */
-  const OFFLINE_TIMEOUT = 15 * 60 * 1000;
-
-  onValue(ref(db, `members/${eventId}`), snap=>{
-    const list = document.getElementById("members");
-    list.innerHTML = "";
-
-    const now = Date.now();
-    const data = snap.val() || {};
-
-    Object.entries(data).forEach(([id,m])=>{
-      if(!m.lat || !m.lng) return;
-
-      const offline =
-        m.lastUpdate && now - m.lastUpdate > OFFLINE_TIMEOUT;
-
-      updateMarker(id, m.lat, m.lng, m.name || "?");
-
-      const div = document.createElement("div");
-      div.className = "member" + (offline ? " offline" : "");
-      div.innerHTML = `
-        <div>${m.name || "?"}</div>
-        <div style="opacity:.7;margin-top:4px">
-          ${offline ? "Offline" : "Aktív"}
-        </div>
-      `;
-
-      div.onclick = () => {
-        showMap();
-        map.setView([m.lat, m.lng], 16);
-        markers[id]?.openPopup();
-      };
-
-      list.appendChild(div);
-    });
-  });
-  function formatTime(ms){
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-
-  if (h > 0) return `${h}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
-  return `${m}:${s.toString().padStart(2,"0")}`;
-}
   /* ===== STAT MODAL ===== */
-const statModal = document.getElementById("statModal");
+  window.openStat = () => {
+    const statModal = document.getElementById("statModal");
+    const statEl = document.getElementById("statContent");
 
-window.openStat = () => {
-  const statEl = document.getElementById("statContent");
+    const distanceKm = totalDistanceKm.toFixed(2);
+    const skiTimeMs = skiingMs;
+    const liftTimeMs = liftMs;
+    const restTimeMs = restMs;
 
-  const distanceKm = (distanceMeters / 1000).toFixed(2);
-  const avgSpeed =
-    skiTimeMs > 0
-      ? ((distanceMeters / 1000) / (skiTimeMs / 3600000)).toFixed(1)
-      : "—";
+    const avgSpeed =
+      skiTimeMs > 0
+        ? (totalDistanceKm / (skiTimeMs / 3600000)).toFixed(1)
+        : "—";
 
-  statEl.innerHTML = `
-    <div>🟢 Csúszás: <strong>${formatTime(skiTimeMs)}</strong></div>
-    <div>🔵 Felvonó: <strong>${formatTime(liftTimeMs)}</strong></div>
-    <div>🟡 Pihenő: <strong>${formatTime(restTimeMs)}</strong></div>
-    <hr style="margin:10px 0;border-color:#333">
-    <div>📏 Távolság: <strong>${distanceKm} km</strong></div>
-    <div>🚀 Átlag seb.: <strong>${avgSpeed} km/h</strong></div>
-    <div>⚡ Max seb.: <strong>${maxSpeedKmh.toFixed(1)} km/h</strong></div>
-  `;
+    statEl.innerHTML = `
+      <div>🟢 Csúszás: <strong>${formatTime(skiTimeMs)}</strong></div>
+      <div>🔵 Felvonó: <strong>${formatTime(liftTimeMs)}</strong></div>
+      <div>🟡 Pihenő: <strong>${formatTime(restTimeMs)}</strong></div>
+      <hr style="margin:10px 0;border-color:#333">
+      <div>📏 Távolság: <strong>${distanceKm} km</strong></div>
+      <div>🚀 Átlag seb.: <strong>${avgSpeed} km/h</strong></div>
+      <div>⚡ Max seb.: <strong>${maxSpeedKmh.toFixed(1)} km/h</strong></div>
+    `;
 
-  statModal.style.display = "flex";
-};
+    if (statModal) {
+      statModal.style.display = "flex";
+    }
+  };
 
-
-window.closeStat = () => {
-  statModal.style.display = "none";
-};
-
+  window.closeStat = () => {
+    const statModal = document.getElementById("statModal");
+    if (statModal) {
+      statModal.style.display = "none";
+    }
+  };
 </script>
 
 <!-- ================= STAT MODAL ================= -->
