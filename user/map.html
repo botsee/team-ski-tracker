@@ -150,10 +150,7 @@
     <div class="icon-btn" onclick="showMap()">🗺️</div>
     <div class="icon-btn" onclick="openStat()">📊</div>
     <div class="icon-btn" onclick="goHome()">⬅️</div>
-   <div class="icon-btn" id="debugToggleBtn">🔧</div>
-
-
-
+    <div class="icon-btn" id="debugToggleBtn" onclick="toggleDebug()">🔧</div>
   </div>
 </div>
 
@@ -192,7 +189,7 @@
     alert("Hiányzó esemény azonosító");
     location.href = "../index.html";
   }
-let debugEnabled = true;
+  let debugEnabled = true;
 
   /* ================= MEASUREMENT ================= */
   let measurementActive = false;
@@ -249,24 +246,30 @@ let debugEnabled = true;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  function updateDebug({ state, candidate, speedKmh, deltaAlt }) {
+    if (!debugEnabled) return;
+
+    const now = Date.now();
+    const confirmSec = candidateSince
+      ? Math.max(0, Math.floor((now - candidateSince) / 1000))
+      : 0;
+
+    const dbgState = document.getElementById("dbgState");
+    const dbgCand = document.getElementById("dbgCand");
+    const dbgSpeed = document.getElementById("dbgSpeed");
+    const dbgAlt = document.getElementById("dbgAlt");
+    const dbgConfirm = document.getElementById("dbgConfirm");
+
+    if (dbgState) dbgState.textContent = state;
+    if (dbgCand) dbgCand.textContent = candidate || "—";
+    if (dbgSpeed) dbgSpeed.textContent =
+      speedKmh != null ? speedKmh.toFixed(1) : "—";
+    if (dbgAlt) dbgAlt.textContent =
+      deltaAlt != null ? deltaAlt.toFixed(1) : "—";
+    if (dbgConfirm) dbgConfirm.textContent = confirmSec;
+  }
+
   function detectCandidateState({ speedKmh, deltaAlt }) {
-    function updateDebug({ state, candidate, speedKmh, deltaAlt }) {
-      if (!debugEnabled) return;
-
-  const now = Date.now();
-  const confirmSec = candidateSince
-    ? Math.max(0, Math.floor((now - candidateSince) / 1000))
-    : 0;
-
-  document.getElementById("dbgState").textContent = state;
-  document.getElementById("dbgCand").textContent = candidate || "—";
-  document.getElementById("dbgSpeed").textContent =
-    speedKmh != null ? speedKmh.toFixed(1) : "—";
-  document.getElementById("dbgAlt").textContent =
-    deltaAlt != null ? deltaAlt.toFixed(1) : "—";
-  document.getElementById("dbgConfirm").textContent = confirmSec;
-}
-
     if (!measurementActive) return "idle";
     if (speedKmh <= 1.5) return "rest";
     if (speedKmh >= 5 && (deltaAlt == null || deltaAlt <= 0)) return "skiing";
@@ -355,21 +358,11 @@ let debugEnabled = true;
       const candidate = detectCandidateState({ speedKmh, deltaAlt });
       updateActivityState(candidate);
       updateDebug({
-  state: currentActivity,
-  candidate,
-  speedKmh,
-  deltaAlt
-});
-{
-  debugEnabled = !debugEnabled;
-
-  const el = document.getElementById("debugOverlay");
-  if (el) {
-    el.style.display = debugEnabled ? "block" : "none";
-  }
-};
-
-
+        state: currentActivity,
+        candidate,
+        speedKmh,
+        deltaAlt
+      });
 
       if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
         const dKm = haversine(
@@ -399,9 +392,8 @@ let debugEnabled = true;
     `🔵 Felvonó: ${Math.round(liftMs/60000)} perc\n` +
     `🟡 Pihenő: ${Math.round(restMs/60000)} perc`
   );
-  const debugBtn = document.getElementById("debugToggleBtn");
-if (debugBtn) {
-  debugBtn.addEventListener("click", () => {
+
+  window.toggleDebug = () => {
     debugEnabled = !debugEnabled;
 
     const el = document.getElementById("debugOverlay");
@@ -410,8 +402,7 @@ if (debugBtn) {
     }
 
     console.log("DEBUG:", debugEnabled);
-  });
-}
+  };
 
 </script>
 <div id="debugOverlay" style="
