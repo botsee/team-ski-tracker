@@ -239,6 +239,21 @@
   }
 
   function detectCandidateState({ speedKmh, deltaAlt }) {
+    function updateDebug({ state, candidate, speedKmh, deltaAlt }) {
+  const now = Date.now();
+  const confirmSec = candidateSince
+    ? Math.max(0, Math.floor((now - candidateSince) / 1000))
+    : 0;
+
+  document.getElementById("dbgState").textContent = state;
+  document.getElementById("dbgCand").textContent = candidate || "—";
+  document.getElementById("dbgSpeed").textContent =
+    speedKmh != null ? speedKmh.toFixed(1) : "—";
+  document.getElementById("dbgAlt").textContent =
+    deltaAlt != null ? deltaAlt.toFixed(1) : "—";
+  document.getElementById("dbgConfirm").textContent = confirmSec;
+}
+
     if (!measurementActive) return "idle";
     if (speedKmh <= 1.5) return "rest";
     if (speedKmh >= 5 && (deltaAlt == null || deltaAlt <= 0)) return "skiing";
@@ -326,6 +341,13 @@
 
       const candidate = detectCandidateState({ speedKmh, deltaAlt });
       updateActivityState(candidate);
+      updateDebug({
+  state: currentActivity,
+  candidate,
+  speedKmh,
+  deltaAlt
+});
+
 
       if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
         const dKm = haversine(
@@ -356,6 +378,25 @@
     `🟡 Pihenő: ${Math.round(restMs/60000)} perc`
   );
 </script>
+<div id="debugOverlay" style="
+  position:fixed;
+  bottom:12px;
+  right:12px;
+  background:rgba(0,0,0,.75);
+  color:#e6e9ef;
+  font-size:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  line-height:1.4;
+  z-index:3000;
+">
+  <div><strong>DEBUG</strong></div>
+  <div>state: <span id="dbgState">—</span></div>
+  <div>candidate: <span id="dbgCand">—</span></div>
+  <div>speed: <span id="dbgSpeed">—</span> km/h</div>
+  <div>Δalt: <span id="dbgAlt">—</span> m</div>
+  <div>confirm: <span id="dbgConfirm">—</span> s</div>
+</div>
 
 </body>
 </html>
