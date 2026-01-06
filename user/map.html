@@ -459,6 +459,8 @@ window._miniMap = miniMap;
         window._miniMap.setView([latitude, longitude], 14);
         firstFix = false;
       }
+      window._miniMap.setView([latitude, longitude]);
+
 
       if (!selfMarker) {
         selfMarker = L.marker([latitude, longitude], {
