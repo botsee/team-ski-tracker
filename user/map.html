@@ -145,6 +145,8 @@
     <div class="icon-btn" onclick="showMap()">🗺️</div>
     <div class="icon-btn" onclick="openStat()">📊</div>
     <div class="icon-btn" onclick="goHome()">⬅️</div>
+    <div class="icon-btn" onclick="toggleDebug()">🔧</div>
+
   </div>
 </div>
 
@@ -183,6 +185,7 @@
     alert("Hiányzó esemény azonosító");
     location.href = "../index.html";
   }
+let debugEnabled = true;
 
   /* ================= MEASUREMENT ================= */
   let measurementActive = false;
@@ -240,6 +243,8 @@
 
   function detectCandidateState({ speedKmh, deltaAlt }) {
     function updateDebug({ state, candidate, speedKmh, deltaAlt }) {
+      if (!debugEnabled) return;
+
   const now = Date.now();
   const confirmSec = candidateSince
     ? Math.max(0, Math.floor((now - candidateSince) / 1000))
@@ -347,6 +352,15 @@
   speedKmh,
   deltaAlt
 });
+window.toggleDebug = () => {
+  debugEnabled = !debugEnabled;
+
+  const el = document.getElementById("debugOverlay");
+  if (el) {
+    el.style.display = debugEnabled ? "block" : "none";
+  }
+};
+
 
 
       if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
