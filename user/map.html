@@ -562,43 +562,26 @@ function getTrackColor(state) {
 window.setManualState = state => {
   manualState = state;
 
-  // gombok reset
   document
     .querySelectorAll(".state-actions button")
     .forEach(btn => {
       btn.classList.remove("active");
-      btn.classList.add("inactive");
+      btn.classList.remove("inactive");
     });
 
-  // aktív gomb kijelölése
+  if (state === "auto") document.getElementById("stateAuto")?.classList.add("active");
+  if (state === "hut") document.getElementById("stateHut")?.classList.add("active");
+  if (state === "offline") document.getElementById("stateOffline")?.classList.add("active");
+
   if (state === "auto") {
-    document.getElementById("stateAuto")?.classList.add("active");
-  }
-  if (state === "hut") {
-    document.getElementById("stateHut")?.classList.add("active");
-  }
-  if (state === "offline") {
-    document.getElementById("stateOffline")?.classList.add("active");
-  }
-
-  document
-    .querySelectorAll(".state-actions button.active")
-    .forEach(btn => btn.classList.remove("inactive"));
-
-  // saját állapot szöveg
-  const label = document.getElementById("activityLabel");
-if (state === "auto") {
-  updateActivityUI(currentActivity);
-} else if (state === "hut") {
-  updateActivityUI("hut");
-} else if (state === "offline") {
-  updateActivityUI("offline");
-}
-
+    updateActivityUI(currentActivity);
+  } else {
+    updateActivityUI(state);
   }
 
   console.log("🧭 Manuális állapot:", state);
-;
+};
+
 /* ===== MEMBERS LIST + STATE ICONS ===== */
 const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
