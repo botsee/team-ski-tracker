@@ -533,14 +533,17 @@ if (manualState === "offline") {
       lastGpsPoint = { lat: latitude, lng: longitude };
       lastAltitude = altitude;
 
-      update(ref(db, `members/${eventId}/${userId}`), {
-        name: userName,
-        lat: latitude,
-        lng: longitude,
-        lastUpdate: Date.now()
+   if (userId && manualState !== "offline") {
+  update(ref(db, `members/${eventId}/${userId}`), {
+    name: userName,
+    lat: latitude,
+    lng: longitude,
+    lastUpdate: now
+  });
+}
+
       });
-    }, err => console.warn(err), { enableHighAccuracy:true });
-  }
+    } err => console.warn(err), { enableHighAccuracy:true }
 window.setManualState = state => {
   manualState = state;
 
@@ -581,6 +584,61 @@ window.setManualState = state => {
 
   console.log("🧭 Manuális állapot:", state);
 };
+/* ===== MEMBERS LIST + STATE ICONS ===== */
+const OFFLINE_TIMEOUT = 15 * 60 * 1000;
+
+onValue(ref(db, `members/${eventId}`), snap => {
+  const list = document.getElementById("members");
+  if (!list) return;
+
+  list.innerHTML = "";
+  const now = Date.now();
+  const data = snap.val() || {};
+
+  Object.entries(data).forEach(([id, m]) => {
+    if (!m.name) return;
+
+    const offline =
+      !m.lastUpdate || now - m.lastUpdate > OFFLINE_TIMEOUT;
+
+    const div = document.createElement("div");
+    div.className = "member" + (offline ? " offline" : "");
+
+    // ===== STATE ICON =====
+    let icon = "❔";
+    if (offline) icon = "⚫";
+    else if (m.state === "skiing") icon = "⛷️";
+    else if (m.state === "lift") icon = "🚡";
+    else if (m.state === "hut") icon = "🏠";
+
+    const iconDiv = document.createElement("div");
+    iconDiv.style.fontSize = "18px";
+    iconDiv.textContent = icon;
+
+    const nameDiv = document.createElement("div");
+    nameDiv.textContent = m.name;
+
+    const stateDiv = document.createElement("div");
+    stateDiv.style.fontSize = "11px";
+    stateDiv.style.opacity = "0.6";
+    stateDiv.style.marginTop = "4px";
+    stateDiv.textContent = offline ? "offline" : (m.state || "—");
+
+    div.appendChild(iconDiv);
+    div.appendChild(nameDiv);
+    div.appendChild(stateDiv);
+
+    // katt → térképre ugrás
+    div.onclick = () => {
+      if (m.lat && m.lng && typeof showMap === "function") {
+        showMap();
+        window._mapInstance?.setView([m.lat, m.lng], 16);
+      }
+    };
+
+    list.appendChild(div);
+  });
+});
 
   window.openStat = () => alert(
     `🟢 Csúszás: ${Math.round(skiingMs/60000)} perc\n` +
