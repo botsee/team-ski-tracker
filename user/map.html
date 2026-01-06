@@ -263,6 +263,25 @@
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
+  /* ===== EVENT META ===== */
+onValue(ref(db, `events/${eventId}`), snap => {
+  const infoEl = document.getElementById("eventInfo");
+  if (!infoEl) return;
+
+  const event = snap.val();
+  if (!event) {
+    infoEl.textContent = "Esemény · —";
+    return;
+  }
+
+  const name = event.name || "Esemény";
+  const resort = event.resort || "—";
+  const start = event.startTime || "—";
+  const end = event.endTime || "—";
+
+  infoEl.textContent = `${name} · ${resort} · ${start}–${end}`;
+});
+
   if (!eventId) {
     alert("Hiányzó esemény azonosító");
     location.href = "../index.html";
@@ -594,6 +613,18 @@ onValue(ref(db, `members/${eventId}`), snap => {
   list.innerHTML = "";
   const now = Date.now();
   const data = snap.val() || {};
+const totalCount = Object.keys(data).length;
+
+const activeCount = Object.values(data).filter(m =>
+  m.lastUpdate && now - m.lastUpdate <= OFFLINE_TIMEOUT
+).length;
+
+// esemény meta frissítése létszámmal
+const infoEl = document.getElementById("eventInfo");
+if (infoEl && totalCount > 0) {
+  infoEl.textContent += ` · ${activeCount}/${totalCount} aktív`;
+}
+
 
   Object.entries(data).forEach(([id, m]) => {
     if (!m.name) return;
