@@ -338,15 +338,13 @@ function setActivity(next) {
   currentActivity = next;
   lastActivityChange = now;
 
-  document.getElementById("activityLabel").textContent = next;
-  console.log("⛷️ Állapot:", next);
+  const label = document.getElementById("activityLabel");
+if (label) {
+  label.textContent = next;
 }
 
-
-  // 🔹 UI frissítés
-  document.getElementById("activityLabel").textContent = next;
-
-
+  console.log("⛷️ Állapot:", next);
+}
 
   /* ===== GPS ===== */
   navigator.geolocation.watchPosition(pos=>{
