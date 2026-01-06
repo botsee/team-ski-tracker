@@ -609,18 +609,18 @@ window.setManualState = state => {
 
   // saját állapot szöveg
   const label = document.getElementById("activityLabel");
-  if (label) {
-    if (state === "auto") {
-      label.textContent = currentActivity;
-    } else if (state === "hut") {
-      label.textContent = "hütte";
-    } else if (state === "offline") {
-      label.textContent = "offline";
-    }
+if (state === "auto") {
+  updateActivityUI(currentActivity);
+} else if (state === "hut") {
+  updateActivityUI("hut");
+} else if (state === "offline") {
+  updateActivityUI("offline");
+}
+
   }
 
   console.log("🧭 Manuális állapot:", state);
-};
+;
 /* ===== MEMBERS LIST + STATE ICONS ===== */
 const OFFLINE_TIMEOUT = 15 * 60 * 1000;
 
