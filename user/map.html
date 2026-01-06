@@ -150,7 +150,8 @@
     <div class="icon-btn" onclick="showMap()">🗺️</div>
     <div class="icon-btn" onclick="openStat()">📊</div>
     <div class="icon-btn" onclick="goHome()">⬅️</div>
-   <div class="icon-btn" id="debugToggleBtn" onclick="toggleDebug()">🔧</div>
+   <div class="icon-btn" id="debugToggleBtn">🔧</div>
+
 
 
   </div>
@@ -359,7 +360,7 @@ let debugEnabled = true;
   speedKmh,
   deltaAlt
 });
-window.toggleDebug = () => {
+{
   debugEnabled = !debugEnabled;
 
   const el = document.getElementById("debugOverlay");
@@ -398,6 +399,20 @@ window.toggleDebug = () => {
     `🔵 Felvonó: ${Math.round(liftMs/60000)} perc\n` +
     `🟡 Pihenő: ${Math.round(restMs/60000)} perc`
   );
+  const debugBtn = document.getElementById("debugToggleBtn");
+if (debugBtn) {
+  debugBtn.addEventListener("click", () => {
+    debugEnabled = !debugEnabled;
+
+    const el = document.getElementById("debugOverlay");
+    if (el) {
+      el.style.display = debugEnabled ? "block" : "none";
+    }
+
+    console.log("DEBUG:", debugEnabled);
+  });
+}
+
 </script>
 <div id="debugOverlay" style="
   position:fixed;
