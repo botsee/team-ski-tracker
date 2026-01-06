@@ -207,10 +207,11 @@
 <!-- ===== MANUAL STATE (HELYKÉSZEN) ===== -->
 <div class="section-title">Állapot váltás</div>
 <div class="state-actions">
-  <button>🤖 Auto</button>
-  <button>🛑 Pihenő</button>
-  <button>⚫ Offline</button>
+  <button id="stateAuto" onclick="setManualState('auto')">🤖 Automatikus</button>
+  <button id="stateHut" onclick="setManualState('hut')">🏠 Hütte</button>
+  <button id="stateOffline" onclick="setManualState('offline')">⚫ Offline</button>
 </div>
+
 
 <!-- ===== MEMBERS ===== -->
 <div class="section-title">Tagok</div>
@@ -270,6 +271,8 @@
 
   /* ================= MEASUREMENT ================= */
   let measurementActive = false;
+  let manualState = "auto"; // auto | hut | offline
+
 
   const startBtn = document.getElementById("startBtn");
 
@@ -403,7 +406,10 @@ function getTrackColor(state) {
     }
   });
 
-  function initMapApp() {
+  function initMapApp() 
+  {
+    setManualState("auto");
+
     const map = L.map("map");
     window._mapInstance = map;
 
@@ -522,6 +528,46 @@ function getTrackColor(state) {
       });
     }, err => console.warn(err), { enableHighAccuracy:true });
   }
+window.setManualState = state => {
+  manualState = state;
+
+  // gombok reset
+  document
+    .querySelectorAll(".state-actions button")
+    .forEach(btn => {
+      btn.classList.remove("active");
+      btn.classList.add("inactive");
+    });
+
+  // aktív gomb kijelölése
+  if (state === "auto") {
+    document.getElementById("stateAuto")?.classList.add("active");
+  }
+  if (state === "hut") {
+    document.getElementById("stateHut")?.classList.add("active");
+  }
+  if (state === "offline") {
+    document.getElementById("stateOffline")?.classList.add("active");
+  }
+
+  document
+    .querySelectorAll(".state-actions button.active")
+    .forEach(btn => btn.classList.remove("inactive"));
+
+  // saját állapot szöveg
+  const label = document.getElementById("activityLabel");
+  if (label) {
+    if (state === "auto") {
+      label.textContent = currentActivity;
+    } else if (state === "hut") {
+      label.textContent = "hütte";
+    } else if (state === "offline") {
+      label.textContent = "offline";
+    }
+  }
+
+  console.log("🧭 Manuális állapot:", state);
+};
 
   window.openStat = () => alert(
     `🟢 Csúszás: ${Math.round(skiingMs/60000)} perc\n` +
