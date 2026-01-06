@@ -310,7 +310,6 @@ onValue(ref(db, `events/${eventId}`), snap => {
   let candidateActivity = null;
   let candidateSince = null;
   let lastActivityChange = Date.now();
-
   const STATE_CONFIRM_TIME = 8000;
 
 function updateActivityUI(state){
@@ -329,19 +328,7 @@ function updateActivityUI(state){
   };
 
   badge.textContent = labels[state] || "—";
-}
-
-    if (!el) return;
-
-    const map = {
-      skiing: "🟢 Csúszás",
-      lift:   "🔵 Felvonó",
-      rest:   "🟡 Pihenő",
-      idle:   "⚪ Készenlét"
-    };
-
-    el.textContent = map[state] || "—";
-  
+} 
 
   /* ================= STATS ================= */
   let skiingMs = 0, liftMs = 0, restMs = 0;
@@ -483,104 +470,95 @@ function getTrackColor(state) {
     let selfMarker = null;
     let miniMapMarker = null;
 
-    navigator.geolocation.watchPosition(pos => {
-      // OFFLINE → semmit nem küldünk DB-be
-if (manualState === "offline") {
-  return;
-}
+   navigator.geolocation.watchPosition(
+  pos => {
+    // OFFLINE esetén semmit nem csinálunk
+    if (manualState === "offline") return;
 
-      const { latitude, longitude, altitude, speed } = pos.coords;
-      const speedKmh = speed ? speed * 3.6 : 0;
-      const deltaAlt = lastAltitude != null && altitude != null
+    const { latitude, longitude, altitude, speed } = pos.coords;
+    const speedKmh = speed ? speed * 3.6 : 0;
+    const deltaAlt =
+      lastAltitude != null && altitude != null
         ? altitude - lastAltitude
         : null;
 
-      if (firstFix) {
-        map.setView([latitude, longitude], 15);
-        window._miniMap.setView([latitude, longitude], 14, { animate: false });
-        window._miniMap.invalidateSize();
-        firstFix = false;
-      } else {
-        // Update minimap position without zooming
-        window._miniMap.panTo([latitude, longitude], { animate: false });
+    // első pozíció
+    if (firstFix) {
+      map.setView([latitude, longitude], 15);
+      window._miniMap.setView([latitude, longitude], 14, { animate: false });
+      window._miniMap.invalidateSize();
+      firstFix = false;
+    } else {
+      window._miniMap.panTo([latitude, longitude], { animate: false });
+    }
+
+    // saját marker (nagy térkép)
+    if (!selfMarker) {
+      selfMarker = L.marker([latitude, longitude], {
+        icon: markerIcon("#2ecc71")
+      }).addTo(map).bindPopup("Te");
+    } else {
+      selfMarker.setLatLng([latitude, longitude]);
+    }
+
+    // saját marker (mini map)
+    if (!miniMapMarker) {
+      miniMapMarker = L.marker([latitude, longitude], {
+        icon: markerIcon("#2ecc71")
+      }).addTo(window._miniMap);
+    } else {
+      miniMapMarker.setLatLng([latitude, longitude]);
+    }
+
+    // aktivitás detektálás
+    const candidate = detectCandidateState({ speedKmh, deltaAlt });
+    updateActivityState(candidate);
+
+    // track rajzolás
+    if (measurementActive) {
+      if (currentActivity !== lastTrackState) {
+        currentTrack = L.polyline([], {
+          color: getTrackColor(currentActivity),
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+        lastTrackState = currentActivity;
       }
+      currentTrack?.addLatLng([latitude, longitude]);
+    }
 
-     if (manualState !== "offline") {
-  if (!selfMarker) {
-    selfMarker = L.marker([latitude, longitude], {
-      icon: markerIcon("#2ecc71")
-    }).addTo(map).bindPopup("Te");
-  } else {
-    selfMarker.setLatLng([latitude, longitude]);
-  }
-} else {
-  if (selfMarker) {
-    map.removeLayer(selfMarker);
-    selfMarker = null;
-  }
-}
+    // stat
+    if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
+      const dKm = haversine(
+        lastGpsPoint.lat,
+        lastGpsPoint.lng,
+        latitude,
+        longitude
+      );
+      totalDistanceKm += dKm;
+      maxSpeedKmh = Math.max(maxSpeedKmh, speedKmh);
+    }
 
+    lastGpsPoint = { lat: latitude, lng: longitude };
+    lastAltitude = altitude;
 
-      if (!miniMapMarker) {
-        miniMapMarker = L.marker([latitude, longitude], {
-          icon: markerIcon("#2ecc71")
-        }).addTo(window._miniMap);
-      } else {
-        miniMapMarker.setLatLng([latitude, longitude]);
-      }
-
-      const candidate = detectCandidateState({ speedKmh, deltaAlt });
-      
-      // ===== TRACK DRAW =====
-      if (measurementActive) {
-        if (currentActivity !== lastTrackState) {
-          // új szakasz állapotváltáskor
-          currentTrack = L.polyline([], {
-            color: getTrackColor(currentActivity),
-            weight: 4,
-            opacity: 0.9
-          }).addTo(map);
-          lastTrackState = currentActivity;
-        }
-
-        if (currentTrack) {
-          currentTrack.addLatLng([latitude, longitude]);
-        }
-      }
-
-      updateActivityState(candidate);
-      updateDebug({
-        state: currentActivity,
-        candidate,
-        speedKmh,
-        deltaAlt
+    // Firebase update
+    if (userId && manualState !== "offline") {
+      update(ref(db, `members/${eventId}/${userId}`), {
+        name: userName,
+        lat: latitude,
+        lng: longitude,
+        lastUpdate: Date.now(),
+        state: manualState === "auto" ? currentActivity : manualState
       });
+    }
+  },
+  err => {
+    console.warn("GPS hiba:", err);
+  },
+  { enableHighAccuracy: true }
+);
 
-      if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
-        const dKm = haversine(
-          lastGpsPoint.lat,
-          lastGpsPoint.lng,
-          latitude,
-          longitude
-        );
-        totalDistanceKm += dKm;
-        maxSpeedKmh = Math.max(maxSpeedKmh, speedKmh);
-      }
-
-      lastGpsPoint = { lat: latitude, lng: longitude };
-      lastAltitude = altitude;
-
-   if (userId && manualState !== "offline") {
-  update(ref(db, `members/${eventId}/${userId}`), {
-    name: userName,
-    lat: latitude,
-    lng: longitude,
-    lastUpdate: now
-  });
-}
-
-      });
-    } err => console.warn(err), { enableHighAccuracy:true }
 window.setManualState = state => {
   manualState = state;
 
