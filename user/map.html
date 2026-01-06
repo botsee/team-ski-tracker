@@ -247,15 +247,15 @@
   };
   
   window.showDashboard = () => {
-  mapView.style.display = "none";
-  dashboardView.style.display = "block";
+    mapView.style.display = "none";
+    document.body.style.overflow = "auto";
 
-  setTimeout(() => {
-    if (window._miniMap) {
-      window._miniMap.invalidateSize();
-    }
-  }, 50);
-};
+    setTimeout(() => {
+      if (window._miniMap) {
+        window._miniMap.invalidateSize();
+      }
+    }, 50);
+  };
   window.goHome = () => location.href = "../index.html";
 
   const params = new URLSearchParams(location.search);
@@ -404,31 +404,10 @@ function getTrackColor(state) {
   function initMapApp() {
     const map = L.map("map");
     window._mapInstance = map;
-    // ===== MINI MAP INIT (ELSŐ BETÖLTÉSKOR) =====
-const miniMap = L.map("miniMap", {
-  zoomControl: false,
-  attributionControl: false,
-  dragging: false,
-  scrollWheelZoom: false,
-  doubleClickZoom: false
-});
-
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18
-}).addTo(miniMap);
-
-// globális referencia későbbre
-window._miniMap = miniMap;
-setTimeout(() => {
-  miniMap.invalidateSize();
-  miniMap.setZoom(miniMap.getZoom());
-}, 100);
-
-
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    // ===== MINI MAP =====
+    // ===== MINI MAP INIT =====
     window._miniMap = L.map("miniMap", {
       zoomControl: false,
       attributionControl: false,
@@ -440,6 +419,13 @@ setTimeout(() => {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18
     }).addTo(window._miniMap);
+
+    // Invalidate size after a short delay to ensure container is rendered
+    setTimeout(() => {
+      if (window._miniMap) {
+        window._miniMap.invalidateSize();
+      }
+    }, 100);
 
     const markerIcon = color =>
       L.divIcon({
@@ -453,32 +439,21 @@ setTimeout(() => {
     let miniMapMarker = null;
 
     navigator.geolocation.watchPosition(pos => {
-  const { latitude, longitude, altitude, speed } = pos.coords;
-  const speedKmh = speed ? speed * 3.6 : 0;
-  const deltaAlt = lastAltitude != null && altitude != null
-    ? altitude - lastAltitude
-    : null;
+      const { latitude, longitude, altitude, speed } = pos.coords;
+      const speedKmh = speed ? speed * 3.6 : 0;
+      const deltaAlt = lastAltitude != null && altitude != null
+        ? altitude - lastAltitude
+        : null;
 
-  if (firstFix) {
-    map.setView([latitude, longitude], 15);
-
-    window._miniMap.setView(
-      [latitude, longitude],
-      14,
-      { animate: false }
-    );
-    window._miniMap.invalidateSize();
-
-    firstFix = false;
-  } else {
-    // NEM zoomolunk, csak követjük a pozíciót
-    window._miniMap.panTo(
-      [latitude, longitude],
-      { animate: false }
-    );
-  }
-});
-
+      if (firstFix) {
+        map.setView([latitude, longitude], 15);
+        window._miniMap.setView([latitude, longitude], 14, { animate: false });
+        window._miniMap.invalidateSize();
+        firstFix = false;
+      } else {
+        // Update minimap position without zooming
+        window._miniMap.panTo([latitude, longitude], { animate: false });
+      }
 
       if (!selfMarker) {
         selfMarker = L.marker([latitude, longitude], {
@@ -494,27 +469,26 @@ setTimeout(() => {
         }).addTo(window._miniMap);
       } else {
         miniMapMarker.setLatLng([latitude, longitude]);
-        window._miniMap.setView([latitude, longitude], 14);
       }
 
       const candidate = detectCandidateState({ speedKmh, deltaAlt });
+      
       // ===== TRACK DRAW =====
-if (measurementActive) {
-  if (currentActivity !== lastTrackState) {
-    // új szakasz állapotváltáskor
-    currentTrack = L.polyline([], {
-      color: getTrackColor(currentActivity),
-      weight: 4,
-      opacity: 0.9
-    }).addTo(map);
+      if (measurementActive) {
+        if (currentActivity !== lastTrackState) {
+          // új szakasz állapotváltáskor
+          currentTrack = L.polyline([], {
+            color: getTrackColor(currentActivity),
+            weight: 4,
+            opacity: 0.9
+          }).addTo(map);
+          lastTrackState = currentActivity;
+        }
 
-    lastTrackState = currentActivity;
-  }
-
-  if (currentTrack) {
-    currentTrack.addLatLng([latitude, longitude]);
-  }
-}
+        if (currentTrack) {
+          currentTrack.addLatLng([latitude, longitude]);
+        }
+      }
 
       updateActivityState(candidate);
       updateDebug({
