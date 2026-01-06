@@ -155,7 +155,7 @@
 
   <div class="bottom-actions">
     <div class="icon-btn" onclick="showMap()">🗺️</div>
-    <div class="icon-btn">📊</div>
+    <div class="icon-btn" onclick="openStat()">📊</div>
     <div class="icon-btn" onclick="goHome()">⬅️</div>
   </div>
 
@@ -434,7 +434,54 @@ lastGpsPoint = {
       list.appendChild(div);
     });
   });
+  /* ===== STAT MODAL ===== */
+const statModal = document.getElementById("statModal");
+
+window.openStat = () => {
+  statModal.style.display = "flex";
+};
+
+window.closeStat = () => {
+  statModal.style.display = "none";
+};
+
 </script>
+
+<!-- ================= STAT MODAL ================= -->
+<div id="statModal" style="
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+">
+  <div style="
+    background:#151a21;
+    color:#e6e9ef;
+    padding:20px;
+    border-radius:16px;
+    width:90%;
+    max-width:360px;
+  ">
+    <h3 style="margin-top:0">📊 Saját stat</h3>
+
+    <div id="statContent" style="font-size:14px;line-height:1.6"></div>
+
+    <button onclick="closeStat()" style="
+      margin-top:16px;
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:12px;
+      background:#4da3ff;
+      color:white;
+      font-size:15px;
+      cursor:pointer;
+    ">Bezárás</button>
+  </div>
+</div>
 
 </body>
 </html>
