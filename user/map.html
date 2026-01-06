@@ -447,6 +447,11 @@ function getTrackColor(state) {
     let miniMapMarker = null;
 
     navigator.geolocation.watchPosition(pos => {
+      // OFFLINE → semmit nem küldünk DB-be
+if (manualState === "offline") {
+  return;
+}
+
       const { latitude, longitude, altitude, speed } = pos.coords;
       const speedKmh = speed ? speed * 3.6 : 0;
       const deltaAlt = lastAltitude != null && altitude != null
@@ -463,13 +468,21 @@ function getTrackColor(state) {
         window._miniMap.panTo([latitude, longitude], { animate: false });
       }
 
-      if (!selfMarker) {
-        selfMarker = L.marker([latitude, longitude], {
-          icon: markerIcon("#2ecc71")
-        }).addTo(map);
-      } else {
-        selfMarker.setLatLng([latitude, longitude]);
-      }
+     if (manualState !== "offline") {
+  if (!selfMarker) {
+    selfMarker = L.marker([latitude, longitude], {
+      icon: markerIcon("#2ecc71")
+    }).addTo(map).bindPopup("Te");
+  } else {
+    selfMarker.setLatLng([latitude, longitude]);
+  }
+} else {
+  if (selfMarker) {
+    map.removeLayer(selfMarker);
+    selfMarker = null;
+  }
+}
+
 
       if (!miniMapMarker) {
         miniMapMarker = L.marker([latitude, longitude], {
