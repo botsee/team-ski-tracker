@@ -195,8 +195,10 @@
 <button class="primary-btn" id="startBtn">▶️ Mérés indítása</button>
 
 <div class="state-box">
-  Saját állapot: <strong id="activityLabel">—</strong>
+  Saját állapot:
+  <div id="activityBadge" class="activity idle">—</div>
 </div>
+
 
 <!-- ===== MINI MAP ===== -->
 <div class="mini-map-wrapper" onclick="showMap()">
@@ -311,8 +313,24 @@ onValue(ref(db, `events/${eventId}`), snap => {
 
   const STATE_CONFIRM_TIME = 8000;
 
-  function updateActivityUI(state){
-    const el = document.getElementById("activityLabel");
+function updateActivityUI(state){
+  const badge = document.getElementById("activityBadge");
+  if (!badge) return;
+
+  badge.className = "activity " + state;
+
+  const labels = {
+    skiing: "⛷️ Csúszás",
+    lift: "🚡 Felvonó",
+    rest: "🟡 Pihenő",
+    hut: "🏠 Hütte",
+    offline: "⚫ Offline",
+    idle: "⚪ Készenlét"
+  };
+
+  badge.textContent = labels[state] || "—";
+}
+
     if (!el) return;
 
     const map = {
@@ -323,7 +341,7 @@ onValue(ref(db, `events/${eventId}`), snap => {
     };
 
     el.textContent = map[state] || "—";
-  }
+  
 
   /* ================= STATS ================= */
   let skiingMs = 0, liftMs = 0, restMs = 0;
