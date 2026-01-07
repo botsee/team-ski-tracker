@@ -436,34 +436,34 @@ function getTrackColor(state) {
     }
   });
 
-  function initMapApp() 
-  {
-    setManualState("auto");
+  function initMapApp() {
+  // ===== NAGY TÉRKÉP =====
+  const map = L.map("map").setView([47.0, 19.0], 14);
+  window._mapInstance = map;
 
-    const map = L.map("map");
-    window._mapInstance = map;
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18
+  }).addTo(map);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+  // ===== MINI MAP =====
+  window._miniMap = L.map("miniMap", {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false
+  }).setView([47.0, 19.0], 14);
 
-    // ===== MINI MAP INIT =====
-    window._miniMap = L.map("miniMap", {
-      zoomControl: false,
-      attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false
-    });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18
+  }).addTo(window._miniMap);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18
-    }).addTo(window._miniMap);
-
-    // Invalidate size after a short delay to ensure container is rendered
-    setTimeout(() => {
-      if (window._miniMap) {
-        window._miniMap.invalidateSize();
-      }
-    }, 100);
+  // Leaflet render fix
+  setTimeout(() => {
+    map.invalidateSize();
+    window._miniMap.invalidateSize();
+  }, 100);
+}
 
     const markerIcon = color =>
       L.divIcon({
