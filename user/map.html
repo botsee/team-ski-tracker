@@ -476,29 +476,17 @@ function getTrackColor(state) {
     let selfMarker = null;
     let miniMapMarker = null;
 
-   navigator.geolocation.watchPosition(
+navigator.geolocation.watchPosition(
   pos => {
-    // OFFLINE esetén semmit nem csinálunk
     if (manualState === "offline") return;
 
     const { latitude, longitude, altitude, speed } = pos.coords;
-    const speedKmh = speed ? speed * 3.6 : 0;
-    const deltaAlt =
-      lastAltitude != null && altitude != null
-        ? altitude - lastAltitude
-        : null;
+    const now = Date.now();
 
-    // első pozíció
-    if (firstFix) {
-      map.setView([latitude, longitude], 15);
-      window._miniMap.setView([latitude, longitude], 14, { animate: false });
-      window._miniMap.invalidateSize();
-      firstFix = false;
-    } else {
-      window._miniMap.panTo([latitude, longitude], { animate: false });
-    }
+    // ===== MAP OK? =====
+    if (!map || !window._miniMap) return;
 
-    // saját marker (nagy térkép)
+    // ===== MARKER (NAGY TÉRKÉP) =====
     if (!selfMarker) {
       selfMarker = L.marker([latitude, longitude], {
         icon: markerIcon("#2ecc71")
@@ -507,7 +495,7 @@ function getTrackColor(state) {
       selfMarker.setLatLng([latitude, longitude]);
     }
 
-    // saját marker (mini map)
+    // ===== MARKER (MINI MAP) =====
     if (!miniMapMarker) {
       miniMapMarker = L.marker([latitude, longitude], {
         icon: markerIcon("#2ecc71")
@@ -516,25 +504,37 @@ function getTrackColor(state) {
       miniMapMarker.setLatLng([latitude, longitude]);
     }
 
-    // aktivitás detektálás
-    const candidate = detectCandidateState({ speedKmh, deltaAlt });
-    updateActivityState(candidate);
-
-    // track rajzolás
-    if (measurementActive) {
-      if (currentActivity !== lastTrackState) {
-        currentTrack = L.polyline([], {
-          color: getTrackColor(currentActivity),
-          weight: 4,
-          opacity: 0.9
-        }).addTo(map);
-        lastTrackState = currentActivity;
-      }
-      currentTrack?.addLatLng([latitude, longitude]);
+    // ===== ELSŐ FIX → FÓKUSZ =====
+    if (firstFix) {
+      map.setView([latitude, longitude], 15);
+      window._miniMap.setView([latitude, longitude], 14, { animate: false });
+      map.invalidateSize();
+      window._miniMap.invalidateSize();
+      firstFix = false;
+    } else {
+      // mini map finom követés
+      window._miniMap.panTo([latitude, longitude], { animate: false });
     }
 
-    // stat
-    if (measurementActive && currentActivity === "skiing" && lastGpsPoint) {
+    // ===== AKTIVITÁS (EGYSZERŰ, STABIL) =====
+    if (measurementActive && manualState === "auto") {
+      const speedKmh = speed ? speed * 3.6 : 0;
+      let next = currentActivity;
+
+      if (speedKmh < 1.5) next = "rest";
+      else if (speedKmh > 5) next = "skiing";
+
+      if (next !== currentActivity) {
+        updateActivityState(next);
+      }
+    }
+
+    // ===== STAT (CSAK CSÚSZÁS) =====
+    if (
+      measurementActive &&
+      currentActivity === "skiing" &&
+      lastGpsPoint
+    ) {
       const dKm = haversine(
         lastGpsPoint.lat,
         lastGpsPoint.lng,
@@ -542,19 +542,19 @@ function getTrackColor(state) {
         longitude
       );
       totalDistanceKm += dKm;
-      maxSpeedKmh = Math.max(maxSpeedKmh, speedKmh);
+      maxSpeedKmh = Math.max(maxSpeedKmh, (speed || 0) * 3.6);
     }
 
     lastGpsPoint = { lat: latitude, lng: longitude };
     lastAltitude = altitude;
 
-    // Firebase update
+    // ===== FIREBASE UPDATE =====
     if (userId && manualState !== "offline") {
       update(ref(db, `members/${eventId}/${userId}`), {
         name: userName,
         lat: latitude,
         lng: longitude,
-        lastUpdate: Date.now(),
+        lastUpdate: now,
         state: manualState === "auto" ? currentActivity : manualState
       });
     }
@@ -562,7 +562,11 @@ function getTrackColor(state) {
   err => {
     console.warn("GPS hiba:", err);
   },
-  { enableHighAccuracy: true }
+  {
+    enableHighAccuracy: true,
+    maximumAge: 2000,
+    timeout: 15000
+  }
 );
 
 window.setManualState = state => {
