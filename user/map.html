@@ -453,6 +453,7 @@ function getTrackColor(state) {
     scrollWheelZoom: false,
     doubleClickZoom: false
   }).setView([47.0, 19.0], 14);
+  window._miniMap = miniMap;
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18
@@ -677,6 +678,12 @@ if (infoEl && totalCount > 0) {
   };
 
 </script>
+let map = null;
+let miniMap = null;
+let selfMarker = null;
+let miniMapMarker = null;
+let firstFix = true;
+
 <div id="debugOverlay" style="
   position:fixed;
   bottom:12px;
