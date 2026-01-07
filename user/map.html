@@ -186,9 +186,10 @@
 
 <!-- ===== EVENT META ===== -->
 <div class="event-meta">
-  <div id="eventInfo">
-    Esemény · Sítér · 09:00–16:30 · 0/0 aktív
-  </div>
+ <div id="eventInfo" style="font-size:11px; opacity:.6">
+  —
+</div>
+
 </div>
 
 <!-- ===== START / STATE ===== -->
@@ -265,6 +266,11 @@
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
+  if (!eventId) {
+  alert("Hiányzó esemény azonosító");
+  location.href = "../index.html";
+}
+
   /* ===== EVENT META ===== */
 onValue(ref(db, `events/${eventId}`), snap => {
   const infoEl = document.getElementById("eventInfo");
