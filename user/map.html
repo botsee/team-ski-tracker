@@ -235,6 +235,11 @@
 </div>
 
 <script type="module">
+  let map = null;
+let miniMap = null;
+let selfMarker = null;
+let miniMapMarker = null;
+let firstFix = true;
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -438,7 +443,7 @@ function getTrackColor(state) {
 
   function initMapApp() {
   // ===== NAGY TÉRKÉP =====
-  const map = L.map("map").setView([47.0, 19.0], 14);
+  map = L.map("map").setView([47.0, 19.0], 14);
   window._mapInstance = map;
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -473,21 +478,16 @@ function getTrackColor(state) {
         iconSize:[14,14], iconAnchor:[7,7]
       });
 
-    let firstFix = true;
-    let selfMarker = null;
-    let miniMapMarker = null;
 
 navigator.geolocation.watchPosition(
   pos => {
     if (manualState === "offline") return;
+    if (!map || !miniMap) return;
 
-    const { latitude, longitude, altitude, speed } = pos.coords;
+    const { latitude, longitude, speed } = pos.coords;
     const now = Date.now();
 
-    // ===== MAP OK? =====
-    if (!map || !window._miniMap) return;
-
-    // ===== MARKER (NAGY TÉRKÉP) =====
+    // ===== SAJÁT MARKER – NAGY TÉRKÉP =====
     if (!selfMarker) {
       selfMarker = L.marker([latitude, longitude], {
         icon: markerIcon("#2ecc71")
@@ -496,54 +496,24 @@ navigator.geolocation.watchPosition(
       selfMarker.setLatLng([latitude, longitude]);
     }
 
-    // ===== MARKER (MINI MAP) =====
+    // ===== SAJÁT MARKER – MINI MAP =====
     if (!miniMapMarker) {
       miniMapMarker = L.marker([latitude, longitude], {
         icon: markerIcon("#2ecc71")
-      }).addTo(window._miniMap);
+      }).addTo(miniMap);
     } else {
       miniMapMarker.setLatLng([latitude, longitude]);
     }
 
-    // ===== ELSŐ FIX → FÓKUSZ =====
+    // ===== ELSŐ GPS FIX → ZOOM RÁD =====
     if (firstFix) {
       map.setView([latitude, longitude], 15);
-      window._miniMap.setView([latitude, longitude], 14, { animate: false });
+      miniMap.setView([latitude, longitude], 14);
       map.invalidateSize();
-      window._miniMap.invalidateSize();
+      miniMap.invalidateSize();
       firstFix = false;
     } else {
-      // mini map finom követés
-      window._miniMap.panTo([latitude, longitude], { animate: false });
-    }
-
-    // ===== AKTIVITÁS (EGYSZERŰ, STABIL) =====
-    if (measurementActive && manualState === "auto") {
-      const speedKmh = speed ? speed * 3.6 : 0;
-      let next = currentActivity;
-
-      if (speedKmh < 1.5) next = "rest";
-      else if (speedKmh > 5) next = "skiing";
-
-      if (next !== currentActivity) {
-        updateActivityState(next);
-      }
-    }
-
-    // ===== STAT (CSAK CSÚSZÁS) =====
-    if (
-      measurementActive &&
-      currentActivity === "skiing" &&
-      lastGpsPoint
-    ) {
-      const dKm = haversine(
-        lastGpsPoint.lat,
-        lastGpsPoint.lng,
-        latitude,
-        longitude
-      );
-      totalDistanceKm += dKm;
-      maxSpeedKmh = Math.max(maxSpeedKmh, (speed || 0) * 3.6);
+      miniMap.panTo([latitude, longitude], { animate: false });
     }
 
     lastGpsPoint = { lat: latitude, lng: longitude };
@@ -678,11 +648,7 @@ if (infoEl && totalCount > 0) {
   };
 
 </script>
-let map = null;
-let miniMap = null;
-let selfMarker = null;
-let miniMapMarker = null;
-let firstFix = true;
+
 
 <div id="debugOverlay" style="
   position:fixed;
