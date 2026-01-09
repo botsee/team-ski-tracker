@@ -2,244 +2,107 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <title>Esemény – Team Ski Tracker</title>
+  <title>Team Ski Tracker – Térkép</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,"Inter",sans-serif;
-      background:#0e1116;
-      color:#e6e9ef;
-    }
-    button{ font-family:inherit; }
-
-    header{
-      padding:14px 16px;
-      background:#151a21;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    header strong{ font-size:16px; }
-
-    #dashboardView{ padding:16px; }
-
-    .primary-btn{
-      width:100%;
-      padding:16px;
-      font-size:18px;
-      border:none;
-      border-radius:14px;
-      background:#4da3ff;
-      color:white;
-      cursor:pointer;
-      margin-bottom:16px;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0e1116;
+      color: #e6e9ef;
     }
 
-    .state-box{
-      background:rgba(255,255,255,.08);
-      padding:12px;
-      border-radius:12px;
-      margin-bottom:16px;
-      font-size:14px;
+    header {
+      padding: 12px 16px;
+      background: #151a21;
+      font-size: 14px;
     }
 
-    /* ===== ACTIVITY BADGE ===== */
-    .activity{
-      display:inline-block;
-      padding:6px 12px;
-      border-radius:999px;
-      font-size:13px;
-      font-weight:600;
-      margin-top:6px;
-    }
-    .activity.skiing{ background:#1abc9c; color:#042f26; }
-    .activity.lift  { background:#3498db; color:#041f33; }
-    .activity.rest  { background:#f1c40f; color:#3a2f04; }
-    .activity.idle  { background:#7f8c8d; color:#1f2a2b; }
-
-    .section-title{
-      font-size:13px;
-      color:#9aa4b2;
-      margin:18px 0 8px;
+    .mini-map-wrapper {
+      height: 22vh;
+      margin: 12px;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
     }
 
-    #members{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
+    #miniMap {
+      width: 100%;
+      height: 100%;
     }
 
-    .member{
-      background:rgba(255,255,255,.08);
-      padding:10px;
-      border-radius:10px;
-      font-size:12px;
-      text-align:center;
-      cursor:pointer;
-    }
-    .member.offline{ opacity:.4; }
-
-    .bottom-actions{
-      margin-top:20px;
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
+    #mapView {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #000;
     }
 
-    .icon-btn{
-      padding:14px 0;
-      background:rgba(255,255,255,.1);
-      border-radius:12px;
-      text-align:center;
-      font-size:18px;
-      cursor:pointer;
+    #map {
+      width: 100%;
+      height: 100%;
     }
 
-   #mapView{
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:5000;
-  background:#0e1116;
-}
-
-    #map{ height:100%; width:100%; }
-
-    #closeMap{
-      position:absolute;
-      top:14px;
-      left:14px;
-      z-index:1000;
-      background:#151a21;
-      color:white;
-      border:none;
-      padding:10px 12px;
-      border-radius:10px;
-      cursor:pointer;
+    #closeMap {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 1000;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: none;
+      background: #151a21;
+      color: white;
     }
-    #debugToggleBtn{
-  position:relative;
-  z-index:4000;
-}
-.event-meta{
-  font-size:12px;
-  color:#9aa4b2;
-  margin-bottom:10px;
-}
 
-.mini-map-wrapper{
-  position:relative;
-  height:22vh;
-  margin:14px 0;
-  border-radius:14px;
-  overflow:hidden;
-  cursor:pointer;
-}
+    .members {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
 
-#miniMap{
-  height:100%;
-  width:100%;
-}
+    .member {
+      background: rgba(255,255,255,.08);
+      padding: 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      text-align: center;
+    }
 
-.mini-map-overlay{
-  position:absolute;
-  inset:0;
-  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  padding-bottom:10px;
-  font-size:13px;
-  color:#fff;
-  pointer-events:none;
-}
-
-.state-actions{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-bottom:16px;
-}
-
-.state-actions button{
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  background:rgba(255,255,255,.08);
-  color:#e6e9ef;
-}
-
+    .member.offline {
+      opacity: .4;
+    }
   </style>
 </head>
 
 <body>
 
 <header>
-  <strong>Esemény</strong>
+  Team Ski Tracker – térkép
 </header>
 
-<!-- ===== EVENT META ===== -->
-<div class="event-meta">
- <div id="eventInfo" style="font-size:11px; opacity:.6">
-  —
-</div>
-
-</div>
-
-<!-- ===== START / STATE ===== -->
-<button class="primary-btn" id="startBtn">▶️ Mérés indítása</button>
-
-<div class="state-box">
-  Saját állapot:
-  <div id="activityBadge" class="activity idle">—</div>
-</div>
-
-
-<!-- ===== MINI MAP ===== -->
 <div class="mini-map-wrapper" onclick="showMap()">
   <div id="miniMap"></div>
-  <div class="mini-map-overlay">🗺️ Térkép nagyítása</div>
 </div>
 
-<!-- ===== MANUAL STATE (HELYKÉSZEN) ===== -->
-<div class="section-title">Állapot váltás</div>
-<div class="state-actions">
-  <button id="stateAuto" onclick="setManualState('auto')">🤖 Automatikus</button>
-  <button id="stateHut" onclick="setManualState('hut')">🏠 Hütte</button>
-  <button id="stateOffline" onclick="setManualState('offline')">⚫ Offline</button>
-</div>
-
-
-<!-- ===== MEMBERS ===== -->
-<div class="section-title">Tagok</div>
-<div id="members"></div>
-
-<!-- ===== ACTIONS ===== -->
-<div class="bottom-actions">
-  <div class="icon-btn" onclick="showMap()">🗺️</div>
-  <div class="icon-btn" onclick="openStat()">📊</div>
-  <div class="icon-btn">🔗</div>
-  <div class="icon-btn" onclick="goHome()">⬅️</div>
-</div>
-
+<div class="members" id="members"></div>
 
 <div id="mapView">
-  <button id="closeMap" onclick="showDashboard()">⬅️ Vissza</button>
+  <button id="closeMap" onclick="hideMap()">⬅️ Vissza</button>
   <div id="map"></div>
 </div>
 
 <script type="module">
-  let map = null;
-let miniMap = null;
-let selfMarker = null;
-let miniMapMarker = null;
-let firstFix = true;
   import { db } from "../js/config.js";
   import { ref, onValue, update } from
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -247,187 +110,34 @@ let firstFix = true;
     getAuth,
     signInAnonymously,
     onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  const mapView = document.getElementById("mapView");
-
-  window.showMap = () => {
-    document.body.style.overflow = "hidden";
-    mapView.style.display = "block";
-    window._mapInstance?.invalidateSize();
-  };
-  
-  window.showDashboard = () => {
-    mapView.style.display = "none";
-    document.body.style.overflow = "auto";
-
-    setTimeout(() => {
-      if (window._miniMap) {
-        window._miniMap.invalidateSize();
-      }
-    }, 50);
-  };
-  window.goHome = () => location.href = "../index.html";
+  /* ===== GLOBAL ===== */
+  let map, miniMap;
+  let selfMarker;
+  let markers = {};
+  let firstFix = true;
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get("eventId");
   if (!eventId) {
-  alert("Hiányzó esemény azonosító");
-  location.href = "../index.html";
-}
-
-  /* ===== EVENT META ===== */
-onValue(ref(db, `events/${eventId}`), snap => {
-  const infoEl = document.getElementById("eventInfo");
-  if (!infoEl) return;
-
-  const event = snap.val();
-  if (!event) {
-    infoEl.textContent = "Esemény · —";
-    return;
-  }
-
-  const name = event.name || "Esemény";
-  const resort = event.resort || "—";
-  const start = event.startTime || "—";
-  const end = event.endTime || "—";
-
-  infoEl.textContent = `${name} · ${resort} · ${start}–${end}`;
-});
-
-  if (!eventId) {
-    alert("Hiányzó esemény azonosító");
+    alert("Hiányzó eventId");
     location.href = "../index.html";
   }
-  let debugEnabled = true;
 
-  /* ================= MEASUREMENT ================= */
-  let measurementActive = false;
-  let manualState = "auto"; // auto | hut | offline
-
-
-  const startBtn = document.getElementById("startBtn");
-
-  startBtn.onclick = () => {
-    measurementActive = !measurementActive;
-    startBtn.textContent = measurementActive
-      ? "⏹️ Mérés leállítása"
-      : "▶️ Mérés indítása";
-    startBtn.style.background = measurementActive ? "#e74c3c" : "#4da3ff";
+  /* ===== MAP VIEW ===== */
+  window.showMap = () => {
+    document.getElementById("mapView").style.display = "block";
+    setTimeout(() => map.invalidateSize(), 100);
   };
 
-  /* ================= ACTIVITY STATE ================= */
-  let currentActivity = "idle";
-  let candidateActivity = null;
-  let candidateSince = null;
-  let lastActivityChange = Date.now();
-  const STATE_CONFIRM_TIME = 8000;
-
-function updateActivityUI(state){
-  const badge = document.getElementById("activityBadge");
-  if (!badge) return;
-
-  badge.className = "activity " + state;
-
-  const labels = {
-    skiing: "⛷️ Csúszás",
-    lift: "🚡 Felvonó",
-    rest: "🟡 Pihenő",
-    hut: "🏠 Hütte",
-    offline: "⚫ Offline",
-    idle: "⚪ Készenlét"
+  window.hideMap = () => {
+    document.getElementById("mapView").style.display = "none";
+    setTimeout(() => miniMap.invalidateSize(), 100);
   };
 
-  badge.textContent = labels[state] || "—";
-} 
-
-  /* ================= STATS ================= */
-  let skiingMs = 0, liftMs = 0, restMs = 0;
-  let totalDistanceKm = 0, maxSpeedKmh = 0;
-  let lastGpsPoint = null;
-  let lastAltitude = null;
-  let currentTrack = null;
-let lastTrackState = null;
-
-
-  function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const toRad = x => x * Math.PI / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  function updateDebug({ state, candidate, speedKmh, deltaAlt }) {
-    if (!debugEnabled) return;
-
-    const now = Date.now();
-    const confirmSec = candidateSince
-      ? Math.max(0, Math.floor((now - candidateSince) / 1000))
-      : 0;
-
-    const dbgState = document.getElementById("dbgState");
-    const dbgCand = document.getElementById("dbgCand");
-    const dbgSpeed = document.getElementById("dbgSpeed");
-    const dbgAlt = document.getElementById("dbgAlt");
-    const dbgConfirm = document.getElementById("dbgConfirm");
-
-    if (dbgState) dbgState.textContent = state;
-    if (dbgCand) dbgCand.textContent = candidate || "—";
-    if (dbgSpeed) dbgSpeed.textContent =
-      speedKmh != null ? speedKmh.toFixed(1) : "—";
-    if (dbgAlt) dbgAlt.textContent =
-      deltaAlt != null ? deltaAlt.toFixed(1) : "—";
-    if (dbgConfirm) dbgConfirm.textContent = confirmSec;
-  }
-
-  function detectCandidateState({ speedKmh, deltaAlt }) {
-    if (!measurementActive) return "idle";
-    if (speedKmh <= 1.5) return "rest";
-    if (speedKmh >= 5 && (deltaAlt == null || deltaAlt <= 0)) return "skiing";
-    if (speedKmh > 1.5 && speedKmh <= 6 && deltaAlt > 0) return "lift";
-    return currentActivity;
-  }
-
-  function updateActivityState(candidate) {
-    const now = Date.now();
-
-    if (candidate !== candidateActivity) {
-      candidateActivity = candidate;
-      candidateSince = now;
-      return;
-    }
-
-    if (
-      candidate !== currentActivity &&
-      now - candidateSince >= STATE_CONFIRM_TIME
-    ) {
-      const delta = now - lastActivityChange;
-
-      if (measurementActive) {
-        if (currentActivity === "skiing") skiingMs += delta;
-        if (currentActivity === "lift") liftMs += delta;
-        if (currentActivity === "rest") restMs += delta;
-      }
-
-      currentActivity = candidate;
-      lastActivityChange = now;
-      updateActivityUI(candidate);
-    }
-  }
-function getTrackColor(state) {
-  if (state === "skiing") return "#1abc9c"; // zöld
-  if (state === "lift")   return "#3498db"; // kék
-  if (state === "rest")   return "#f1c40f"; // sárga
-  return "#7f8c8d"; // idle / egyéb
-}
-
-  /* ===== AUTH + MAP ===== */
+  /* ===== AUTH ===== */
   const auth = getAuth();
   let userId = null;
   let userName = localStorage.getItem("userName") || "Ismeretlen";
@@ -435,233 +145,104 @@ function getTrackColor(state) {
   onAuthStateChanged(auth, user => {
     if (user) {
       userId = user.uid;
-      initMapApp();
+      initMaps();
+      startGps();
+      subscribeMembers();
     } else {
       signInAnonymously(auth);
     }
   });
 
-  function initMapApp() {
-  // ===== NAGY TÉRKÉP =====
-  map = L.map("map").setView([47.0, 19.0], 14);
-  window._mapInstance = map;
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18
-  }).addTo(map);
-
-  // ===== MINI MAP =====
-  window._miniMap = L.map("miniMap", {
-    zoomControl: false,
-    attributionControl: false,
-    dragging: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false
-  }).setView([47.0, 19.0], 14);
-  window._miniMap = miniMap;
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18
-  }).addTo(window._miniMap);
-
-  // Leaflet render fix
-  setTimeout(() => {
-    map.invalidateSize();
-    window._miniMap.invalidateSize();
-  }, 100);
-}
-
-    const markerIcon = color =>
-      L.divIcon({
-        className:"",
-        html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;"></div>`,
-        iconSize:[14,14], iconAnchor:[7,7]
-      });
-
-
-navigator.geolocation.watchPosition(
-  pos => {
-    if (manualState === "offline") return;
-    if (!map || !miniMap) return;
-
-    const { latitude, longitude, speed } = pos.coords;
-    const now = Date.now();
-
-    // ===== SAJÁT MARKER – NAGY TÉRKÉP =====
-    if (!selfMarker) {
-      selfMarker = L.marker([latitude, longitude], {
-        icon: markerIcon("#2ecc71")
-      }).addTo(map).bindPopup("Te");
-    } else {
-      selfMarker.setLatLng([latitude, longitude]);
-    }
-
-    // ===== SAJÁT MARKER – MINI MAP =====
-    if (!miniMapMarker) {
-      miniMapMarker = L.marker([latitude, longitude], {
-        icon: markerIcon("#2ecc71")
-      }).addTo(miniMap);
-    } else {
-      miniMapMarker.setLatLng([latitude, longitude]);
-    }
-
-    // ===== ELSŐ GPS FIX → ZOOM RÁD =====
-    if (firstFix) {
-      map.setView([latitude, longitude], 15);
-      miniMap.setView([latitude, longitude], 14);
-      map.invalidateSize();
-      miniMap.invalidateSize();
-      firstFix = false;
-    } else {
-      miniMap.panTo([latitude, longitude], { animate: false });
-    }
-
-    // ===== FIREBASE POZÍCIÓ =====
-    if (userId) {
-      update(ref(db, `members/${eventId}/${userId}`), {
-        name: userName,
-        lat: latitude,
-        lng: longitude,
-        lastUpdate: now,
-        state: manualState === "auto" ? currentActivity : manualState
-      });
-    }
-  },
-  err => console.warn("GPS hiba:", err),
-  { enableHighAccuracy: true }
-);
-
-window.setManualState = state => {
-  manualState = state;
-
-  document
-    .querySelectorAll(".state-actions button")
-    .forEach(btn => {
-      btn.classList.remove("active");
-      btn.classList.remove("inactive");
+  /* ===== MAP INIT ===== */
+  function initMaps() {
+    map = L.map("map");
+    miniMap = L.map("miniMap", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false
     });
 
-  if (state === "auto") document.getElementById("stateAuto")?.classList.add("active");
-  if (state === "hut") document.getElementById("stateHut")?.classList.add("active");
-  if (state === "offline") document.getElementById("stateOffline")?.classList.add("active");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18
+    }).addTo(map);
 
-  if (state === "auto") {
-    updateActivityUI(currentActivity);
-  } else {
-    updateActivityUI(state);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18
+    }).addTo(miniMap);
   }
 
-  console.log("🧭 Manuális állapot:", state);
-};
-/* ===== MEMBERS LIST + STATE ICONS ===== */
-const OFFLINE_TIMEOUT = 15 * 60 * 1000;
+  /* ===== GPS ===== */
+  function startGps() {
+    navigator.geolocation.watchPosition(
+      pos => {
+        const { latitude, longitude } = pos.coords;
+        const now = Date.now();
 
-onValue(ref(db, `members/${eventId}`), snap => {
-  const list = document.getElementById("members");
-  if (!list) return;
+        if (!selfMarker) {
+          selfMarker = L.marker([latitude, longitude])
+            .addTo(map)
+            .bindPopup("Te");
 
-  list.innerHTML = "";
-  const now = Date.now();
-  const data = snap.val() || {};
-const totalCount = Object.keys(data).length;
+          map.setView([latitude, longitude], 15);
+          miniMap.setView([latitude, longitude], 14);
+        } else {
+          selfMarker.setLatLng([latitude, longitude]);
+        }
 
-const activeCount = Object.values(data).filter(m =>
-  m.lastUpdate && now - m.lastUpdate <= OFFLINE_TIMEOUT
-).length;
+        miniMap.eachLayer(l => {
+          if (l instanceof L.Marker) miniMap.removeLayer(l);
+        });
+        L.marker([latitude, longitude]).addTo(miniMap);
 
-// esemény meta frissítése létszámmal
-const infoEl = document.getElementById("eventInfo");
-if (infoEl && totalCount > 0) {
-  infoEl.textContent += ` · ${activeCount}/${totalCount} aktív`;
-}
+        update(ref(db, `members/${eventId}/${userId}`), {
+          name: userName,
+          lat: latitude,
+          lng: longitude,
+          lastUpdate: now
+        });
+      },
+      err => alert("GPS hiba: " + err.message),
+      { enableHighAccuracy: true }
+    );
+  }
 
+  /* ===== MEMBERS ===== */
+  function subscribeMembers() {
+    const OFFLINE = 15 * 60 * 1000;
 
-  Object.entries(data).forEach(([id, m]) => {
-    if (!m.name) return;
+    onValue(ref(db, `members/${eventId}`), snap => {
+      const list = document.getElementById("members");
+      list.innerHTML = "";
 
-    const offline =
-      !m.lastUpdate || now - m.lastUpdate > OFFLINE_TIMEOUT;
+      const now = Date.now();
+      const data = snap.val() || {};
 
-    const div = document.createElement("div");
-    div.className = "member" + (offline ? " offline" : "");
+      Object.entries(data).forEach(([id, m]) => {
+        if (!m.lat || !m.lng) return;
 
-    // ===== STATE ICON =====
-    let icon = "❔";
-    if (offline) icon = "⚫";
-    else if (m.state === "skiing") icon = "⛷️";
-    else if (m.state === "lift") icon = "🚡";
-    else if (m.state === "hut") icon = "🏠";
+        if (!markers[id]) {
+          markers[id] = L.marker([m.lat, m.lng]).addTo(map);
+        } else {
+          markers[id].setLatLng([m.lat, m.lng]);
+        }
 
-    const iconDiv = document.createElement("div");
-    iconDiv.style.fontSize = "18px";
-    iconDiv.textContent = icon;
+        const offline = !m.lastUpdate || now - m.lastUpdate > OFFLINE;
 
-    const nameDiv = document.createElement("div");
-    nameDiv.textContent = m.name;
+        const div = document.createElement("div");
+        div.className = "member" + (offline ? " offline" : "");
+        div.textContent = m.name || "?";
 
-    const stateDiv = document.createElement("div");
-    stateDiv.style.fontSize = "11px";
-    stateDiv.style.opacity = "0.6";
-    stateDiv.style.marginTop = "4px";
-    stateDiv.textContent = offline ? "offline" : (m.state || "—");
+        div.onclick = () => {
+          showMap();
+          map.setView([m.lat, m.lng], 16);
+        };
 
-    div.appendChild(iconDiv);
-    div.appendChild(nameDiv);
-    div.appendChild(stateDiv);
-
-    // katt → térképre ugrás
-    div.onclick = () => {
-      if (m.lat && m.lng && typeof showMap === "function") {
-        showMap();
-        window._mapInstance?.setView([m.lat, m.lng], 16);
-      }
-    };
-
-    list.appendChild(div);
-  });
-});
-
-  window.openStat = () => alert(
-    `🟢 Csúszás: ${Math.round(skiingMs/60000)} perc\n` +
-    `🔵 Felvonó: ${Math.round(liftMs/60000)} perc\n` +
-    `🟡 Pihenő: ${Math.round(restMs/60000)} perc`
-  );
-
-  window.toggleDebug = () => {
-    debugEnabled = !debugEnabled;
-
-    const el = document.getElementById("debugOverlay");
-    if (el) {
-      el.style.display = debugEnabled ? "block" : "none";
-    }
-
-    console.log("DEBUG:", debugEnabled);
-  };
-
+        list.appendChild(div);
+      });
+    });
+  }
 </script>
-
-
-<div id="debugOverlay" style="
-  position:fixed;
-  bottom:12px;
-  right:12px;
- background: rgba(0,0,0,.75);
-color: #e6e9ef;
-  font-size:12px;
-  padding:10px 12px;
-  border-radius:12px;
-  line-height:1.4;
-  z-index:3000;
-  pointer-events:none;
-
-">
-  <div><strong>DEBUG</strong></div>
-  <div>state: <span id="dbgState">—</span></div>
-  <div>candidate: <span id="dbgCand">—</span></div>
-  <div>speed: <span id="dbgSpeed">—</span> km/h</div>
-  <div>Δalt: <span id="dbgAlt">—</span> m</div>
-  <div>confirm: <span id="dbgConfirm">—</span> s</div>
-</div>
 
 </body>
 </html>
