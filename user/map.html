@@ -516,11 +516,8 @@ navigator.geolocation.watchPosition(
       miniMap.panTo([latitude, longitude], { animate: false });
     }
 
-    lastGpsPoint = { lat: latitude, lng: longitude };
-    lastAltitude = altitude;
-
-    // ===== FIREBASE UPDATE =====
-    if (userId && manualState !== "offline") {
+    // ===== FIREBASE POZÍCIÓ =====
+    if (userId) {
       update(ref(db, `members/${eventId}/${userId}`), {
         name: userName,
         lat: latitude,
@@ -530,14 +527,8 @@ navigator.geolocation.watchPosition(
       });
     }
   },
-  err => {
-    console.warn("GPS hiba:", err);
-  },
-  {
-    enableHighAccuracy: true,
-    maximumAge: 2000,
-    timeout: 15000
-  }
+  err => console.warn("GPS hiba:", err),
+  { enableHighAccuracy: true }
 );
 
 window.setManualState = state => {
